@@ -272,7 +272,8 @@ def test_hub_links_are_plain_tokens_https_and_quoted(hub):
     for target in re.findall(r'href="(?!#)([^"]*)"', page):
         assert target.startswith("https://"), target
     for tag in re.findall(r"<[a-zA-Z][^<>]*>", page):
-        assert not re.search(r"\s[a-zA-Z:-]+=[^\"\s>]", tag), tag
+        # values are quoted; escaped markup inside a quoted value is not an attribute
+        assert not re.search(r"\s[a-zA-Z:-]+=[^\"\s>]", re.sub(r'"[^"]*"', '""', tag)), tag
     ids = re.findall(r'\sid="([^"]+)"', page)
     assert len(ids) == len(set(ids))
 
@@ -569,3 +570,14 @@ def test_concept_map_without_concepts_says_so(catalog, tmp_path):
     (tmp_path / "20-map.md").write_text("# Map\n\n<!-- concept-map -->\n")
     [view] = render.hub_views(catalog, tmp_path)
     assert "No concept records with qc_links yet" in view.html
+
+
+def test_every_column_header_and_control_has_a_tooltip(catalog):
+    html = render.render_site(catalog, CHAPTER.parent)
+    heads = re.findall(r'<th data-k="([^"]+)"', html)
+    tips = re.search(r"const HEAD_TIPS = \{(.*?)\n\};", html, re.S).group(1)
+    assert heads and all(re.search(rf"^\s+{k}:", tips, re.M) for k in heads), heads
+    controls = re.search(r"const CONTROL_TIPS = \{(.*?)\n\};", html, re.S).group(1)
+    for k in ("q", "layer", "kind", "tier", "side", "requires", "stats-toggle"):
+        assert re.search(rf"^\s+'?{re.escape(k)}'?:", controls, re.M), k
+    assert " title=\"" not in markup(html)

@@ -502,6 +502,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const prose = s => STANDALONE ? hubRefs(esc(s)) : esc(s);
 const catLabel = Object.fromEntries(VOCAB.categories.map(c => [c[0], c[1]]));
 const catLayer = Object.fromEntries(VOCAB.categories.map(c => [c[0], c[2]]));
+const catDesc = Object.fromEntries(VOCAB.categories.map(c => [c[0], c[3]]));
 const tierOrder = VOCAB.tiers.map(t => t[0]);
 const tierDesc = Object.fromEntries(VOCAB.tiers);
 const benchById = Object.fromEntries((typeof BENCHMARKS !== 'undefined' ? BENCHMARKS : []).map(b => [b.id, b]));
@@ -549,7 +550,10 @@ function renderChips() {
     const rack = document.createElement('div'); rack.className = 'chips';
     cats.forEach(([key, label, lay, desc]) => {
       const b = document.createElement('button');
-      b.className = 'chip' + (lay === 'adjacent' ? ' adj' : ''); b.type = 'button'; b.title = desc;
+      b.className = 'chip' + (lay === 'adjacent' ? ' adj' : ''); b.type = 'button';
+      b.dataset.tip = '<b>' + esc(label) + '</b>: ' + esc(desc) + tipNote(catCounts[key] + ' records' +
+        (lay === 'adjacent' ? ', adjacent concept map' : '') + '. Click to filter; with several selected, ' +
+        'a row needs any one of them.');
       b.setAttribute('aria-pressed', state.cats.has(key));
       b.innerHTML = '<span class="lab">' + esc(label) + '</span><span class="n">' + catCounts[key] + '</span>';
       b.onclick = () => {
@@ -610,16 +614,86 @@ const cmp = (a, b) => {
 // the magnitude and colour is not a second encoding of the same thing.
 // ---------------------------------------------------------------------------
 let statsOpen = true;
+// One tooltip for the whole page: any element with data-tip (escaped HTML)
+// shows it beside the pointer on hover, or below the element on keyboard focus.
 const tip = $('tip');
-const showTip = (evt, html) => {
-  tip.innerHTML = html; tip.style.opacity = '1';
+let tipEl = null;
+const placeTip = (cx, cy) => {
   const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
-  let x = evt.clientX + pad, y = evt.clientY + pad;
-  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
-  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+  let x = cx + pad, y = cy + pad;
+  if (x + w > innerWidth - 8) x = Math.max(8, cx - w - pad);
+  if (y + h > innerHeight - 8) y = Math.max(8, cy - h - pad);
   tip.style.left = x + 'px'; tip.style.top = y + 'px';
 };
-const hideTip = () => { tip.style.opacity = '0'; };
+const openTip = (el, cx, cy) => {
+  tipEl = el; tip.innerHTML = el.dataset.tip; tip.style.opacity = '1'; placeTip(cx, cy);
+};
+const hideTip = () => { tipEl = null; tip.style.opacity = '0'; };
+const tipTarget = e => (e.target.closest ? e.target.closest('[data-tip]') : null);
+document.addEventListener('mouseover', e => {
+  const el = tipTarget(e);
+  if (!el) { if (tipEl) hideTip(); return; }
+  if (el !== tipEl) openTip(el, e.clientX, e.clientY);
+});
+document.addEventListener('mousemove', e => { if (tipEl) placeTip(e.clientX, e.clientY); });
+document.addEventListener('focusin', e => {
+  const el = tipTarget(e);
+  if (!el) { hideTip(); return; }
+  const r = el.getBoundingClientRect();
+  openTip(el, r.left, r.bottom - 6);
+});
+document.addEventListener('focusout', hideTip);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTip(); });
+addEventListener('scroll', () => { if (tipEl && !tipEl.contains(document.activeElement)) hideTip(); }, { passive: true });
+
+// Tooltip text for the controls and column headers, built from the schema's vocabulary.
+const tipList = pairs => '<ul>' + pairs.map(([k, d]) => '<li><b>' + esc(k) + '</b>: ' + esc(d) + '</li>').join('') + '</ul>';
+const tipNote = s => '<span class="tl">' + s + '</span>';
+const vocabDesc = (list, key) => ((list.find(x => x[0] === key) || [])[1] || '');
+const SORT_NOTE = tipNote('Click to sort; click again to reverse the order.');
+const HEAD_TIPS = {
+  name: '<b>Name</b>: the tool, method, study, design or concept, with a one-line summary. ' +
+    'Select a name to open the record: evidence, caveats, citation and where the review discusses it.',
+  categories: '<b>Categories</b>: the QC or analysis stages the record belongs to. The first is its ' +
+    'primary category. A dashed chip belongs to the adjacent concept map rather than to QC proper.',
+  kind: '<b>Kind</b>: what sort of record it is.' + tipList(VOCAB.kinds),
+  tier_rank: '<b>Tier</b>: how strong the evidence behind it is, strongest first.' + tipList(VOCAB.tiers) +
+    tipNote("A method paper's comparison with its own competitors does not count as a benchmark."),
+  side: '<b>Side</b>: what it does to the cells.' + tipList(VOCAB.sides),
+  recovers: '<b>Recovers / gain</b>: what it salvages or improves, then the reported gain with its number ' +
+    'and setting. The label in brackets says who measured the gain.' + tipList(VOCAB.gain_sources),
+  requires: '<b>Requires</b>: the data it needs as input. Hover a chip for what each input means; ' +
+    'the "Any input" filter above keeps records that need one of them.',
+  year: '<b>Year</b>: publication year of the primary paper. The box below keeps records from that year on.',
+  citations: "<b>Citations</b>: OpenAlex's count for the record's own primary paper, a rough popularity signal " +
+    'and not a quality measure. A small second figure is the total across all of the record\'s papers. ' +
+    'A paper claimed by three or more records is a suite paper and shows no count. The box below sets a minimum.',
+  n_links: '<b>Links</b>: the site, code and paper or preprint (<span class="ok">✓</span> identifier fetched and ' +
+    'title matched; <span class="bad">!</span> the last citation check contradicted it), and review: where ' +
+    'a chapter discusses the record. Sorting puts records with more links first.',
+};
+const FILTER_TIPS = {
+  name: 'Keep rows whose name or summary contains this text.',
+  categories: 'Keep rows whose category names contain this text.',
+  recovers: 'Keep rows whose recovers or gain text contains this.',
+  year: 'Earliest publication year to keep.',
+  citations: 'Minimum citation count to keep. Rows without a count drop out.',
+};
+const CONTROL_TIPS = {
+  q: '<b>Search</b> every field: name, summary, recovers, gain, caveats, kind, tier, side, language, ' +
+     'tags, required inputs and categories. With several words, a row must match all of them.',
+  layer: '<b>Layer</b>' + tipList(VOCAB.layers.map(([k, head, desc]) => [head, desc])),
+  kind: '<b>Kind</b>' + tipList(VOCAB.kinds),
+  tier: '<b>Tier</b>' + tipList(VOCAB.tiers),
+  side: '<b>Side</b>' + tipList(VOCAB.sides),
+  requires: '<b>Required input</b>: keep records that need this kind of data.' + tipList(VOCAB.requires),
+  'stats-toggle': 'Show or hide the summary panels. They always describe the rows currently shown.',
+};
+document.querySelectorAll('th[data-k]').forEach(th => {
+  if (HEAD_TIPS[th.dataset.k]) th.dataset.tip = HEAD_TIPS[th.dataset.k] + SORT_NOTE;
+});
+document.querySelectorAll('[data-f]').forEach(el => { if (FILTER_TIPS[el.dataset.f]) el.dataset.tip = FILTER_TIPS[el.dataset.f]; });
+Object.entries(CONTROL_TIPS).forEach(([id, html]) => { if ($(id)) $(id).dataset.tip = html; });
 const compact = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n);
 
 function columns(bins, width, height) {
@@ -663,8 +737,20 @@ function columns(bins, width, height) {
          '" role="img">' + parts.join('') + '</svg>';
 }
 
+const KPI_TIPS = {
+  'Records shown': 'Records matching the current search, filters and categories.',
+  'Keep or recover cells': 'Records whose side is additive (keeps or recovers cells, or gets more signal ' +
+    'from the cells kept) or both.',
+  'Independently measured gain': "Records whose reported gain was measured by other authors, in a benchmark " +
+    "or independent study, rather than by the method's own authors.",
+  'With a verified paper': 'Records whose DOI or PMID was fetched and whose title matched the record. ' +
+    'The smaller figure counts records with any paper.',
+  'Actively maintained': 'Records whose repository was updated in the last two years and is not archived, ' +
+    'out of those with repository data.',
+};
 function panel(stat, chart, width) {
-  return '<div class="panel"><div class="kpi"><div class="k">' + esc(stat[0]) + '</div>' +
+  const kt = KPI_TIPS[stat[0]] ? ' data-tip="' + esc(KPI_TIPS[stat[0]]) + '"' : '';
+  return '<div class="panel"><div class="kpi"' + kt + '><div class="k">' + esc(stat[0]) + '</div>' +
     '<div class="v">' + esc(stat[1]) + '</div><div class="s">' + esc(stat[2]) + '</div></div>' +
     (chart ? '<div class="chart"><h3>' + esc(chart.title) + '</h3><p>' + esc(chart.sub) + '</p>' +
              columns(chart.bins, width, 120) + '</div>' : '') + '</div>';
@@ -737,10 +823,6 @@ function renderStats(rows) {
      pb && { title: 'Repository last updated', sub: pb.n + ' with a live repository', bins: pb.bins }],
   ];
   box.innerHTML = panels.map(([s, c]) => panel(s, c, w)).join('');
-  box.querySelectorAll('[data-tip]').forEach(el => {
-    el.addEventListener('mousemove', e => showTip(e, el.dataset.tip));
-    el.addEventListener('mouseleave', hideTip);
-  });
 }
 
 // The site links to the chapter file; the hub page to the chapter on the same page.
@@ -765,50 +847,59 @@ function render() {
   const dash = '<span class="no">-</span>';
   $('rows').innerHTML = rows.map(t => {
     const href = t.url || t.repo_url || t.publication_url || '';
-    const cav = t.caveats ? ' <span class="cav" title="' + esc(t.caveats) + '">caveats</span>' : '';
+    const cav = t.caveats ? ' <span class="cav" data-tip="' + esc('<b>Caveats</b>: ' + esc(t.caveats)) + '">caveats</span>' : '';
     // On the hub page the name opens the record's details; its links are in the details.
     const nameCell = (STANDALONE ? hubNameButton(t)
       : href ? '<a class="nm" href="' + esc(href) + '">' + esc(t.name) + '</a>'
              : '<span class="nm">' + esc(t.name) + '</span>') +
-      (t.repo_archived ? ' <span class="arch">archived</span>' : '') +
+      (t.repo_archived ? ' <span class="arch" data-tip="The repository is archived: read-only, no longer maintained.">archived</span>' : '') +
       '<span class="sm">' + esc(t.summary) + cav + '</span>';
-    const cats = t.categories.map(c => '<span class="cat' + (catLayer[c] === 'adjacent' ? ' adj' : '') +
-      '" title="' + esc(catLayer[c] || '') + '">' + esc(catLabel[c] || c) + '</span>').join('');
+    const cats = t.categories.map((c, i) => '<span class="cat' + (catLayer[c] === 'adjacent' ? ' adj' : '') +
+      '" data-tip="' + esc('<b>' + esc(catLabel[c] || c) + '</b>: ' + esc(catDesc[c] || '') +
+        tipNote((i === 0 ? 'Primary category' : 'Secondary category') +
+                (catLayer[c] === 'adjacent' ? ', adjacent concept map' : ''))) +
+      '">' + esc(catLabel[c] || c) + '</span>').join('');
     const rank = t.tier_rank >= 0 ? Math.min(t.tier_rank, 4) : 4;
     const benches = (t.benchmark_refs || []).map(b =>
-      '<a class="bm" href="' + esc(b.url) + '" title="' + esc(b.name) + '">benchmarked: ' +
+      '<a class="bm" href="' + esc(b.url) + '" data-tip="' + esc('<b>Independent benchmark</b>: ' + esc(b.name) +
+        (b.scope ? tipNote(esc(b.scope)) : '')) + '">benchmarked: ' +
       esc(b.name.length > 28 ? b.name.slice(0, 27) + '…' : b.name) + '</a>').join('');
-    const tierCell = '<span class="tier t' + rank + '" title="' + esc(tierDesc[t.tier] || '') + '">' +
+    const tierCell = '<span class="tier t' + rank + '" data-tip="' + esc('<b>' + esc(t.tier) + '</b>: ' + esc(tierDesc[t.tier] || '')) + '">' +
       esc(t.tier) + '</span>' + benches;
     let rg = '';
     if (t.recovers) rg += prose(t.recovers);
     if (t.gain) rg += (rg ? '<br>' : '') + '<b>Gain:</b> ' + prose(t.gain) +
-      (t.gain_source && t.gain_source !== 'none' ? ' <span class="gs">(' + esc(t.gain_source) + ')</span>' : '');
-    const req = (t.requires || []).map(r => '<span class="req" title="' + esc((VOCAB.requires.find(x => x[0] === r) || [])[1] || '') +
-      '">' + esc(r) + '</span>').join('');
+      (t.gain_source && t.gain_source !== 'none' ? ' <span class="gs" data-tip="' +
+        esc('<b>' + esc(t.gain_source) + '</b>: ' + esc(vocabDesc(VOCAB.gain_sources, t.gain_source))) + '">(' +
+        esc(t.gain_source) + ')</span>' : '');
+    const req = (t.requires || []).map(r => '<span class="req" data-tip="' +
+      esc('<b>' + esc(r) + '</b>: ' + esc(vocabDesc(VOCAB.requires, r))) + '">' + esc(r) + '</span>').join('');
     let cites = t.citations != null ? t.citations.toLocaleString()
-      : (t.citation_note ? '<span title="' + esc(t.citation_note) + '">' + dash + '</span>' : dash);
+      : (t.citation_note ? '<span data-tip="' + esc(esc(t.citation_note)) + '">' + dash + '</span>' : dash);
     if (t.citations != null && t.citations_total && t.citations_papers)
-      cites += '<span class="agg" title="Total across the record\'s own papers; the table sorts on the primary paper.">' +
+      cites += '<span class="agg" data-tip="Citations summed across the record\'s own papers; the table sorts on the primary paper.">' +
                t.citations_total.toLocaleString() + ' / ' + t.citations_papers + 'p</span>';
     const links = [];
-    if (t.site) links.push('<a href="' + esc(t.site) + '">site</a>');
-    if (t.repo_url) links.push('<a href="' + esc(t.repo_url) + '">code</a>');
+    if (t.site) links.push('<a href="' + esc(t.site) + '" data-tip="' + esc('Homepage: ' + esc(t.site)) + '">site</a>');
+    if (t.repo_url) links.push('<a href="' + esc(t.repo_url) + '" data-tip="' + esc('Source code: ' + esc(t.repo_url) +
+      (t.repo_stars ? tipNote(t.repo_stars.toLocaleString() + ' stars' + (t.repo_pushed ? ', last updated ' + esc(t.repo_pushed.slice(0, 10)) : '')) : '')) + '">code</a>');
     if (t.publication_url) {
       const ptip = [t.publication_title, t.publication_venue, t.year].filter(Boolean).join(' · ');
       let mark = '';
       if (t.citation_check === 'mismatch')
-        mark = '<span class="bad" title="The last citation check contradicted this record. See docs/citation-check.md.">!</span>';
+        mark = '<span class="bad" data-tip="The last citation check contradicted this record. See docs/citation-check.md.">!</span>';
       else if (t.verified)
-        mark = '<span class="ok" title="DOI or PMID fetched and the title matched">✓</span>';
-      links.push('<a href="' + esc(t.publication_url) + '" title="' + esc(ptip) + '">' +
+        mark = '<span class="ok" data-tip="Verified: the DOI or PMID was fetched and its title matched the record.">✓</span>';
+      links.push('<a href="' + esc(t.publication_url) + '" data-tip="' + esc(esc(ptip)) + '">' +
                  (t.publication_is_preprint ? 'preprint' : 'paper') + '</a>' + mark);
     }
     const rv = reviewHref(t);
-    if (rv) links.push('<a href="' + esc(rv) + '">review</a>');
+    if (rv) links.push('<a href="' + esc(rv) + '" data-tip="Open the chapter passage that discusses this record.">review</a>');
     return (STANDALONE ? '<tr data-id="' + esc(t.id) + '">' : '<tr>') +
       '<td class="name">' + nameCell + '</td><td>' + cats + '</td>' +
-      '<td>' + esc(t.kind) + '</td><td>' + tierCell + '</td><td>' + esc(t.side) + '</td>' +
+      '<td><span data-tip="' + esc('<b>' + esc(t.kind) + '</b>: ' + esc(vocabDesc(VOCAB.kinds, t.kind))) + '">' + esc(t.kind) + '</span></td>' +
+      '<td>' + tierCell + '</td>' +
+      '<td><span data-tip="' + esc('<b>' + esc(t.side) + '</b>: ' + esc(vocabDesc(VOCAB.sides, t.side))) + '">' + esc(t.side) + '</span></td>' +
       '<td class="rg">' + (rg || dash) + '</td><td>' + (req || dash) + '</td>' +
       '<td class="num">' + esc(t.year) + '</td><td class="num">' + cites + '</td>' +
       '<td class="lnk">' + (links.join('') || dash) + '</td></tr>' +
@@ -830,6 +921,8 @@ document.querySelectorAll('[data-f]').forEach(el => {
   el.addEventListener('click', e => e.stopPropagation());
 });
 document.querySelectorAll('th[data-k]').forEach(th => {
+  th.tabIndex = 0;
+  th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); th.click(); } });
   th.onclick = () => {
     const k = th.dataset.k;
     state.dir = state.sort === k ? -state.dir
@@ -928,6 +1021,7 @@ def vocab() -> dict:
         "tiers": [[k, v] for k, v in TIERS.items()],
         "sides": [[k, v] for k, v in SIDES.items()],
         "requires": [[k, v] for k, v in REQUIRES.items()],
+        "gain_sources": [[k, v] for k, v in GAIN_SOURCES.items()],
     }
 
 
@@ -1063,6 +1157,12 @@ def ref_label(t: dict) -> tuple[str, bool]:
         return t["id"], True
     short = re.sub(r"\s*\([^()]*\)\s*$", "", t["name"]).strip()
     return short or t["name"], False
+
+
+def record_tip(t: dict) -> str:
+    """Tooltip HTML for a record link: name, tier pill, summary."""
+    return (f'<b>{_esc(t["name"])}</b> <span class="tier {tier_class(t)}">{_esc(t["tier"])}</span>'
+            f'<br>{_esc(t["summary"])}')
 
 
 def tier_class(t: dict) -> str:
@@ -1319,7 +1419,7 @@ class ReviewPage:
             self.mentions[rid] = self.unique(f"{self.token}-m-{rid}")
             attrs.append(f'id="{self.mentions[rid]}"')
         attrs += [f'href="#{_attr(rid)}"', f'class="rec {tier_class(t)}{" key" if key else ""}"',
-                  f'title="{_attr(t["name"] + " (" + t["tier"] + "): " + t["summary"])}"']
+                  f'data-tip="{_attr(record_tip(t))}"']
         return f'<a {" ".join(attrs)}>{_esc(text)}</a>'
 
     def md_record_link(self, rid: str, label: str) -> str:
@@ -1379,21 +1479,21 @@ class ReviewPage:
                 edges.append(
                     f'<path class="e" data-c="{_attr(t["id"])}" data-q="{_attr(q)}" '
                     f'd="M{xa:.0f},{y:.0f} C{mid:.0f},{y:.0f} {mid:.0f},{qy[q]:.0f} '
-                    f'{xb:.0f},{qy[q]:.0f}"><title>{_esc(CATEGORY_LABEL[q])}: '
-                    f'{_esc(link.get("effect") or "")}</title></path>')
+                    f'{xb:.0f},{qy[q]:.0f}" data-tip="{_attr("<b>" + _esc(CATEGORY_LABEL[q]) + "</b>: " + _esc(link.get("effect") or ""))}"></path>')
             n = len(t.get("qc_links") or [])
             nodes.append(
-                f'<a class="n c" href="#{_attr(t["id"])}" data-c="{_attr(t["id"])}">'
+                f'<a class="n c" href="#{_attr(t["id"])}" data-c="{_attr(t["id"])}" '
+                f'aria-label="{_attr(t["name"])}" '
+                f'data-tip="{_attr(record_tip(t) + "<span class=tl>" + plural(n, "QC link") + "</span>")}">'
                 f'<rect x="{x0:.0f}" y="{y - 13:.0f}" width="{nw}" height="26" rx="6"/>'
                 f'<text x="{x0 + nw / 2:.0f}" y="{y + 4.5:.0f}">'
-                f'{_esc(CATEGORY_LABEL.get(t["categories"][0], t["name"]))}</text>'
-                f'<title>{_esc(t["name"])}: {_esc(t["summary"])} ({plural(n, "QC link")})</title></a>')
+                f'{_esc(CATEGORY_LABEL.get(t["categories"][0], t["name"]))}</text></a>')
         for q, y in qy.items():
             nodes.append(
-                f'<g class="n q" tabindex="0" data-q="{_attr(q)}">'
+                f'<g class="n q" tabindex="0" data-q="{_attr(q)}" aria-label="{_attr(CATEGORY_LABEL[q])}" '
+                f'data-tip="{_attr("<b>" + _esc(CATEGORY_LABEL[q]) + "</b>: " + _esc(CATEGORY_DESC[q]))}">'
                 f'<rect x="{qx0:.0f}" y="{y - 13:.0f}" width="{qw}" height="26" rx="13"/>'
-                f'<text x="{W / 2:.0f}" y="{y + 4.5:.0f}">{_esc(CATEGORY_LABEL[q])}</text>'
-                f'<title>{_esc(CATEGORY_DESC[q])}</title></g>')
+                f'<text x="{W / 2:.0f}" y="{y + 4.5:.0f}">{_esc(CATEGORY_LABEL[q])}</text></g>')
         svg = (f'<svg class="cmap-svg" viewBox="0 0 {W} {H:.0f}" role="img" '
                f'aria-label="Which QC choices affect which downstream concepts">'
                + "".join(edges) + "".join(nodes) + "</svg>")
@@ -1439,7 +1539,7 @@ class ReviewPage:
                 f'<tr{row_id}><td class="name"><a class="rec {cls}" href="#{_attr(rid)}">'
                 f'{_esc(t["name"])}</a><span class="sm">{_esc(t["summary"])}</span></td>'
                 f'<td>{_esc(t["kind"])}</td><td><span class="tier {cls}" '
-                f'title="{_attr(TIERS.get(t["tier"], ""))}">{_esc(t["tier"])}</span></td>'
+                f'data-tip="{_attr("<b>" + _esc(t["tier"]) + "</b>: " + _esc(TIERS.get(t["tier"], "")))}">{_esc(t["tier"])}</span></td>'
                 f'<td>{_esc(t["side"])}</td><td class="sm-col">'
                 f'{_esc(", ".join(t.get("requires") or [])) or "-"}</td>'
                 f'<td class="num">{_esc(t.get("year") or "")}</td><td>{paper}</td></tr>')
@@ -1875,10 +1975,19 @@ th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: t
 .rd dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .rd .dim { color: var(--muted); }
 #tip {
-  position: fixed; z-index: 50; pointer-events: none; opacity: 0; padding: 5px 9px;
-  border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg);
-  font-size: 12px; white-space: nowrap; box-shadow: 0 2px 10px var(--shadow); transition: opacity 0.1s;
+  position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+  max-width: min(44ch, calc(100vw - 16px)); padding: 8px 11px;
+  border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg); color: var(--fg);
+  font: 12.5px/1.45 var(--font-ui); white-space: normal; text-align: left;
+  box-shadow: 0 4px 16px var(--shadow); transition: opacity 0.1s;
 }
+#tip b { font-weight: 650; }
+#tip ul { margin: 6px 0 0; padding-left: 1.1em; }
+#tip li { margin: 2px 0; }
+#tip .tl { display: block; margin-top: 6px; color: var(--muted); }
+#tip .tier { font-size: 11px; }
+th[data-k] { cursor: pointer; }
+th[data-k]:focus-visible { outline-offset: -2px; }
 .notes { max-width: 90ch; margin-top: 22px; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
 
 @media (max-width: 1100px) {
@@ -1904,7 +2013,7 @@ th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: t
 
 THEME_BUTTON = (
     '<button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark" '
-    'title="Switch between light and dark"><svg viewBox="0 0 16 16" width="16" height="16" '
+    'data-tip="Switch between light and dark"><svg viewBox="0 0 16 16" width="16" height="16" '
     'aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" '
     'stroke-width="1.5"></circle><path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor">'
     "</path></svg></button>")
@@ -1963,7 +2072,8 @@ function hubRefs(html) {
     const key = !label && ['evidence', 'hypothesis'].includes(t.kind);
     const text = label ? label.trim() : key ? t.id : (t.name.replace(/\s*\([^()]*\)\s*$/, '') || t.name);
     const rank = t.tier_rank >= 0 ? Math.min(t.tier_rank, 4) : 4;
-    return '<a href="#' + esc(t.id) + '" class="rec t' + rank + (key ? ' key' : '') + '">' + (label ? text : esc(text)) + '</a>';
+    const tipHtml = '<b>' + esc(t.name) + '</b> <span class="tier t' + rank + '">' + esc(t.tier) + '</span><br>' + esc(t.summary);
+    return '<a href="#' + esc(t.id) + '" class="rec t' + rank + (key ? ' key' : '') + '" data-tip="' + esc(tipHtml) + '">' + (label ? text : esc(text)) + '</a>';
   });
 }
 const viewLabel = token => (/^ch\d/.test(token) ? token.slice(2, 4) + ' ' : '') + (viewTitle.get(token) || token);
@@ -2170,15 +2280,18 @@ def _hub_rail(views: list[ReviewView], n_records: int) -> str:
     for v in views:
         overview = v.token == "overview"
         items.append(
-            f'<li><a href="#{v.token}" data-nav="{v.token}" title="{_attr(v.title)}">'
+            f'<li><a href="#{v.token}" data-nav="{v.token}" data-tip="{_attr(_esc(v.title))}">'
             f'<span class="num">{"" if overview else v.number}</span>'
             f'<span class="lbl">{_esc(v.short)}</span></a></li>')
     menu = ""
     if items:
-        menu = ('<details class="chapters"><summary>Chapters <span class="cur"></span></summary>\n'
+        menu = ('<details class="chapters"><summary data-tip="The review: an overview, then a chapter '
+                'on each QC stage and on the analysis steps QC feeds into.">Chapters '
+                '<span class="cur"></span></summary>\n'
                 '<ol class="menu">\n' + "\n".join(items) + "\n</ol>\n</details>\n")
     return ('<nav class="topbar" aria-label="Report">\n'
-            '<a class="v" href="#catalog" data-nav="catalog">Catalog'
+            '<a class="v" href="#catalog" data-nav="catalog" data-tip="Every record, with search, '
+            'filters, sortable columns and summary panels.">Catalog'
             f'<span class="n">{n_records}</span></a>\n' + menu + "</nav>")
 
 
@@ -2200,8 +2313,9 @@ def _hub_view(v: ReviewView, hidden: bool) -> str:
             "</section>")
 
 
-DOWNLOAD_BUTTON = ('<button class="theme" id="dl" type="button" title="Download the rows '
-                   'currently shown, in the current sort order, as a tab-separated file">'
+DOWNLOAD_BUTTON = ('<button class="theme" id="dl" type="button" data-tip="Download the rows '
+                   'currently shown, in the current sort order, as a tab-separated file with the '
+                   'columns of data/catalog.tsv.">'
                    'Download</button>')
 
 
@@ -2259,7 +2373,7 @@ def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR, document: bool = Fa
         "</main>",
         "</div>",
         "</div>",
-        '<div id="tip" role="status"></div>',
+        '<div id="tip" role="tooltip"></div>',
         f"<script>\n{catalog_js(catalog)}</script>",
         catalog_part[script_at:].replace("__HUB_JS__", hub_js.lstrip("\n")),
     ]
