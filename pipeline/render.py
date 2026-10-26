@@ -4,8 +4,8 @@
     README.md                    per-category top entries, short enough to read
     docs/records.md              every record, each with an anchor: the target of
                                  record links in the README and the chapters
-    docs/index.html, catalog.js  the full catalog: client-side search, filters,
-                                 sorting and a light/dark theme, no build step
+    docs/index.html              the site (GitHub Pages): the catalog, then the
+                                 review chapters from a top menu, in one file
     docs/review/*.md             only the region between `<!-- records:start -->`
                                  and `<!-- records:end -->`; the rest is hand-written
     dist/hub.html                (--standalone) the review chapters and the catalog
@@ -35,7 +35,6 @@ CATALOG = DATA / "catalog.json"
 README = ROOT / "README.md"
 RECORDS_MD = DOCS / "records.md"
 INDEX = DOCS / "index.html"
-DATA_JS = DOCS / "catalog.js"
 STANDALONE = DIST / "hub.html"
 
 TITLE = "Awesome Single-Cell QC"
@@ -211,11 +210,11 @@ def render_readme(catalog: dict) -> str:
           "still writing `curation/records/`; this page fills in on the next "
           "`make curate`.")
     A("")
-    A("The full catalog, with filters for layer, category, kind, tier, side and "
-      "required input, is the site in `docs/` (`make serve`, then "
-      "http://127.0.0.1:8510/) or the single-file page `make page` writes to "
-      "`dist/hub.html`. On GitHub, [docs/records.md](docs/records.md) lists every "
-      "record.")
+    A(f"**Browse it at {SITE_URL}**: the full catalog, with filters for layer, "
+      "category, kind, tier, side and required input, and the review chapters. "
+      "The same page is `docs/index.html` (`make serve`, then "
+      "http://127.0.0.1:8510/). On GitHub, [docs/records.md](docs/records.md) lists "
+      "every record.")
     A("")
 
     A("## Contents")
@@ -285,7 +284,7 @@ def render_readme(catalog: dict) -> str:
     A("verify_citations.py  fetch each DOI (Crossref) and PMID (PubMed), match the")
     A("                     title, check both name one work -> docs/citation-check.md")
     A("enrich.py            citation counts (OpenAlex), repository activity (GitHub)")
-    A("render.py            README.md, docs/index.html, review-chapter tables,")
+    A("render.py            README.md, docs/index.html (the site), chapter tables,")
     A("                     dist/hub.html")
     A("```")
     A("")
@@ -897,144 +896,6 @@ $('dl').onclick = () => {
 };
 """
 
-SITE_HTML = r"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Awesome Single-Cell QC</title>
-<meta name="description" content="Catalog of __COUNT__ single-cell QC and preprocessing tools, methods and evidence, with a map of adjacent concepts.">
-<style>
-:root{
-  --bg:#ffffff; --fg:#1a1d21; --muted:#5c6570; --line:#e3e6ea; --accent:#1b6ac9;
-  --chip:#f1f4f8; --chip-on:#1b6ac9; --chip-on-fg:#fff; --card:#fff; --warn:#a4551a; --ok:#2e7d4f;
-  --series-1:#2a78d6; --grid:#e8ebee;
-  --t0:#e6f0fb; --t0-fg:#1b4f8f; --t1:#e5f4ea; --t1-fg:#1f6b3d; --t2:#fbf1e2; --t2-fg:#8a5212;
-  --t3:#f3e9f7; --t3-fg:#6c3483; --t4:#eef0f2; --t4-fg:#4b5560;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme=light]){ --bg:#14171a; --fg:#e6e9ec; --muted:#98a2ad; --line:#2a2f35; --accent:#6aa9f0;
-    --chip:#21262c; --chip-on:#6aa9f0; --chip-on-fg:#101316; --card:#1a1e22; --warn:#e0a06a; --ok:#6fcf97;
-    --series-1:#3987e5; --grid:#262b31;
-    --t0:#18304d; --t0-fg:#a9cbf3; --t1:#173826; --t1-fg:#9edcb4; --t2:#3b2a12; --t2-fg:#f0c48a;
-    --t3:#33213d; --t3-fg:#d6b0ea; --t4:#262b31; --t4-fg:#b8c0c8; }
-}
-:root[data-theme=dark]{ --bg:#14171a; --fg:#e6e9ec; --muted:#98a2ad; --line:#2a2f35; --accent:#6aa9f0;
-  --chip:#21262c; --chip-on:#6aa9f0; --chip-on-fg:#101316; --card:#1a1e22; --warn:#e0a06a; --ok:#6fcf97;
-  --series-1:#3987e5; --grid:#262b31;
-  --t0:#18304d; --t0-fg:#a9cbf3; --t1:#173826; --t1-fg:#9edcb4; --t2:#3b2a12; --t2-fg:#f0c48a;
-  --t3:#33213d; --t3-fg:#d6b0ea; --t4:#262b31; --t4-fg:#b8c0c8; }
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);
-  font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
-a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
-header{border-bottom:1px solid var(--line);padding:16px 16px;position:sticky;top:0;background:var(--bg);z-index:10}
-h1{font-size:19px;margin:0 0 3px}
-.sub{color:var(--muted);font-size:13px}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
-input[type=search],select{background:var(--card);color:var(--fg);border:1px solid var(--line);
-  border-radius:7px;padding:7px 10px;font:inherit;font-size:14px;max-width:100%}
-input[type=search]{flex:1 1 260px;min-width:180px}
-main{padding:16px 16px 60px}
-footer{max-width:110ch;color:var(--muted);font-size:12.5px;margin-top:22px;line-height:1.7}
-.layerhead{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:6px 0 5px}
-.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin:0 0 10px}
-.chip{background:var(--chip);border:1px solid var(--line);border-radius:8px;
-  padding:5px 10px;font-size:12.5px;cursor:pointer;user-select:none;text-align:left;
-  display:flex;align-items:center;gap:8px;min-height:30px;color:inherit;font-family:inherit}
-.chip.adj{border-style:dashed}
-.chip .lab{flex:1 1 auto;line-height:1.25}
-.chip[aria-pressed=true]{background:var(--chip-on);color:var(--chip-on-fg);border-color:var(--chip-on)}
-.chip .n{opacity:.65;font-variant-numeric:tabular-nums;flex:0 0 auto}
-.count{color:var(--muted);font-size:13px;margin:4px 0 10px}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;min-width:1180px;font-size:14px}
-th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
-th{position:sticky;top:0;background:var(--bg);cursor:pointer;white-space:nowrap;
-   font-weight:600;font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
-th:hover{color:var(--fg)} th .ar{opacity:.5;font-size:10px}
-tbody tr:hover{background:var(--chip)}
-td.name{min-width:230px;max-width:420px}
-td.name .nm{font-weight:600}
-td.name .sm{display:block;color:var(--muted);font-size:13px;margin-top:2px}
-td.rg{min-width:230px;max-width:340px;font-size:13px}
-td.rg .gs{color:var(--muted);font-size:11.5px}
-td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-td.lnk{white-space:nowrap;font-size:12.5px}
-td.lnk a{margin-right:6px}
-tr.filters th{position:sticky;top:34px;background:var(--bg);padding:4px 6px;cursor:default;
-  text-transform:none;letter-spacing:0;font-weight:400}
-tr.filters input{width:100%;min-width:58px;background:var(--card);color:var(--fg);
-  border:1px solid var(--line);border-radius:5px;padding:3px 6px;font:inherit;font-size:12px}
-.no{color:var(--muted);opacity:.45}
-.cat{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:5px;
-  padding:1px 6px;font-size:11.5px;margin:1px 3px 1px 0;color:var(--muted);white-space:nowrap}
-.cat.adj{border-style:dashed}
-.req{display:inline-block;font-size:11.5px;color:var(--muted);margin:0 4px 1px 0;white-space:nowrap}
-.tier{display:inline-block;border-radius:5px;padding:1px 7px;font-size:12px;font-weight:600;white-space:nowrap}
-.tier.t0{background:var(--t0);color:var(--t0-fg)} .tier.t1{background:var(--t1);color:var(--t1-fg)}
-.tier.t2{background:var(--t2);color:var(--t2-fg)} .tier.t3{background:var(--t3);color:var(--t3-fg)}
-.tier.t4{background:var(--t4);color:var(--t4-fg)}
-.bm{display:block;font-size:11.5px;margin-top:3px}
-.cav{color:var(--warn);font-size:11.5px;cursor:help;border-bottom:1px dotted currentColor}
-.ok{color:var(--ok);font-size:12px;cursor:help}
-.bad{color:var(--warn);font-size:12px;font-weight:700;cursor:help}
-.arch{color:var(--warn);font-size:11.5px}
-.agg{display:block;font-size:11px;color:var(--muted);cursor:help}
-.theme{background:none;border:1px solid var(--line);border-radius:7px;color:var(--fg);
-  padding:7px 10px;cursor:pointer;font:inherit;font-size:14px}
-.stats{margin:0 0 14px}
-.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
-.panel{border:1px solid var(--line);border-radius:10px;background:var(--card);display:flex;flex-direction:column}
-.kpi{padding:10px 12px 8px;border-bottom:1px solid var(--line)}
-.kpi .k{font-size:12px;color:var(--muted)}
-.kpi .v{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
-.kpi .s{font-size:11.5px;color:var(--muted)}
-.chart{padding:8px 12px 6px}
-.chart h3{margin:0;font-size:12.5px;font-weight:600}
-.chart p{margin:1px 0 4px;font-size:11.5px;color:var(--muted)}
-.chart svg{display:block;width:100%;height:auto}
-.chart .band:hover{fill:var(--fg);fill-opacity:.05}
-#tip{position:fixed;pointer-events:none;background:var(--card);color:var(--fg);border:1px solid var(--line);
-  border-radius:7px;padding:5px 9px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.16);opacity:0;
-  transition:opacity .1s;z-index:50;white-space:nowrap}
-.empty{padding:28px;text-align:center;color:var(--muted)}
-/* On a phone a sticky header with six controls would cover a third of the screen. */
-@media (max-width:640px){ header{position:static} tr.filters th{top:0} }
-</style>
-</head>
-<body>
-<header>
-  <h1>Awesome Single-Cell QC</h1>
-  <div class="sub">__COUNT__ records: single-cell QC and preprocessing tools, methods and evidence,
-    with an emphasis on salvaging cells and signal in multiplexed experiments · built __DATE__</div>
-  <div class="controls">
-__FILTERS__
-    <button class="theme" id="dl" type="button"
-      title="Download the rows currently shown, in the current sort order, as a tab-separated file">Download</button>
-    <button class="theme" id="theme" type="button" title="Toggle light or dark">◐</button>
-  </div>
-</header>
-<main>
-__TABLE__
-  <footer>
-__NOTES__
-  </footer>
-</main>
-<div id="tip" role="status"></div>
-__DATA_SCRIPT__
-<script>
-__CATALOG_JS__
-
-__DOWNLOAD_JS__
-
-render();
-</script>
-</body>
-</html>
-"""
-
-
 def slim_records(catalog: dict) -> list[dict]:
     """What the page needs per record, without the fields only the TSV uses."""
     keep = ("id", "name", "kind", "layer", "categories", "side", "tier", "summary",
@@ -1093,19 +954,17 @@ def _fill_catalog(page: str, catalog: dict, standalone: bool) -> str:
             .replace("__DATE__", catalog["meta"]["generated"]))
 
 
-def render_html(catalog: dict) -> str:
-    """The site's catalog page (docs/index.html), which loads catalog.js beside it."""
-    return _fill_catalog(SITE_HTML, catalog, standalone=False).replace(
-        "__DATA_SCRIPT__", '<script src="catalog.js"></script>')
-
-
-def write_site(catalog: dict, docs_dir: Path = DOCS) -> tuple[Path, Path]:
+def write_site(catalog: dict, docs_dir: Path = DOCS,
+               review_dir: Path = REVIEW_DIR) -> Path:
+    """docs/index.html: the hub as a whole page, for GitHub Pages."""
     docs_dir = Path(docs_dir)
     docs_dir.mkdir(parents=True, exist_ok=True)
-    js, index = docs_dir / "catalog.js", docs_dir / "index.html"
-    js.write_text(catalog_js(catalog))
-    index.write_text(render_html(catalog))
-    return index, js
+    stale = docs_dir / "catalog.js"          # the old site's data file
+    if stale.exists():
+        stale.unlink()
+    index = docs_dir / "index.html"
+    index.write_text(render_site(catalog, review_dir))
+    return index
 
 
 # ---------------------------------------------------------------------------
@@ -1120,6 +979,7 @@ def write_site(catalog: dict, docs_dir: Path = DOCS) -> tuple[Path, Path]:
 
 PUBMED = "https://pubmed.ncbi.nlm.nih.gov/"
 REPO_URL = "https://github.com/thirtysix/awesome-single-cell-qc"
+SITE_URL = "https://thirtysix.github.io/awesome-single-cell-qc/"
 HUB_DESCRIPTION = ("A catalog and review of single-cell QC and preprocessing tools, methods "
                    "and evidence, with an emphasis on salvaging cells and signal in "
                    "multiplexed experiments.")
@@ -2057,6 +1917,7 @@ HUB_CATALOG = r"""<section class="view catalog" data-view="catalog" aria-labelle
 </header>
 <div class="controls">
 __FILTERS__
+__DOWNLOAD_BUTTON__
 </div>
 __TABLE__
 <footer class="notes">
@@ -2339,11 +2200,23 @@ def _hub_view(v: ReviewView, hidden: bool) -> str:
             "</section>")
 
 
-def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR) -> str:
+DOWNLOAD_BUTTON = ('<button class="theme" id="dl" type="button" title="Download the rows '
+                   'currently shown, in the current sort order, as a tab-separated file">'
+                   'Download</button>')
+
+
+def render_site(catalog: dict, review_dir: Path = REVIEW_DIR) -> str:
+    """docs/index.html: the hub as a whole document, with downloads."""
+    return render_hub(catalog, review_dir, document=True)
+
+
+def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR, document: bool = False) -> str:
     """dist/hub.html: the review chapters and the catalog explorer in one file.
 
-    Page content only, for a host that supplies the document skeleton; see the
-    comment above PUBMED for the rules it keeps.
+    By default page content only, for a host that supplies the document
+    skeleton; see the comment above PUBMED for the rules it keeps. With
+    `document`, a whole page for a static host (GitHub Pages): doctype, charset
+    and viewport, and a button that downloads the rows shown.
     """
     records = catalog.get("records") or []
     views = hub_views(catalog, review_dir)
@@ -2356,18 +2229,26 @@ def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR) -> str:
     catalog_part = _fill_catalog(
         HUB_CATALOG.replace("__HIDDEN__", "")
         .replace("__REPO__", REPO_URL)
-        + "<script>\n__CATALOG_JS__\n__HUB_JS__</script>",
+        .replace("__DOWNLOAD_BUTTON__\n", DOWNLOAD_BUTTON + "\n" if document else "")
+        + "<script>\n__CATALOG_JS__\n__HUB_JS__"
+        + ("\n__DOWNLOAD_JS__" if document else "") + "</script>",
         catalog, standalone=True)
     hub_js = (HUB_JS.replace("__VIEWS__", _js_json(tokens))
               .replace("__REVIEW_LINK__", _js_json(review_link))
               .replace("__CITED_IN__", _js_json(cited)))
     script_at = catalog_part.index("<script>")
+    head = [f"<title>{TITLE}</title>",
+            '<meta name="claude:viewport-fit-sides" content="cover">',
+            "<style>", hub_theme_css() + HUB_CSS.strip("\n"), "</style>"]
+    if document:
+        head = ['<!doctype html>', '<html lang="en">', '<head>', '<meta charset="utf-8">',
+                '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
+                f"<title>{TITLE}</title>",
+                f'<meta name="description" content="{_attr(HUB_DESCRIPTION)}">',
+                "<style>", hub_theme_css() + HUB_CSS.strip("\n"), "</style>",
+                "</head>", "<body>"]
     parts = [
-        f"<title>{TITLE}</title>",
-        '<meta name="claude:viewport-fit-sides" content="cover">',
-        "<style>",
-        hub_theme_css() + HUB_CSS.strip("\n"),
-        "</style>",
+        *head,
         '<div class="frame">',
         _hub_masthead(catalog, views),
         '<div class="layout">',
@@ -2382,6 +2263,8 @@ def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR) -> str:
         f"<script>\n{catalog_js(catalog)}</script>",
         catalog_part[script_at:].replace("__HUB_JS__", hub_js.lstrip("\n")),
     ]
+    if document:
+        parts += ["</body>", "</html>"]
     return "\n".join(parts) + "\n"
 
 
@@ -2425,12 +2308,12 @@ def main(argv: list[str] | None = None) -> int:
 
     README.write_text(render_readme(catalog) + "\n")
     RECORDS_MD.write_text(render_records_md(catalog) + "\n")
-    index, js = write_site(catalog)
+    reviewed = render_review(catalog, args.review_dir)
+    index = write_site(catalog, review_dir=args.review_dir)
     print(f"README.md          {README.stat().st_size / 1024:.1f} KB")
     print(f"docs/records.md    {RECORDS_MD.stat().st_size / 1024:.1f} KB")
-    print(f"docs/index.html    {index.stat().st_size / 1024:.1f} KB")
-    print(f"docs/catalog.js    {js.stat().st_size / 1024:.1f} KB ({n} records)")
-    for path, outcome in render_review(catalog, args.review_dir):
+    print(f"docs/index.html    {index.stat().st_size / 1024:.1f} KB ({n} records)")
+    for path, outcome in reviewed:
         print(f"review {path.name}: {outcome}")
     return 0
 

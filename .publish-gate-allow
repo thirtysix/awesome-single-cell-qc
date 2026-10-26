@@ -5,7 +5,7 @@
 house-memory-link  curation/records/*.yaml
 house-memory-link  data/catalog.json
 house-memory-link  data/catalog.tsv
-house-memory-link  docs/catalog.js
+house-memory-link  docs/index.html
 house-memory-link  docs/review/*.md
 house-memory-link  README.md
 house-memory-link  skills/*/SKILL.md

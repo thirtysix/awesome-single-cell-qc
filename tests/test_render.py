@@ -90,7 +90,7 @@ def test_readme_with_no_records_says_so(empty_catalog):
 def test_no_em_dashes_in_generated_text(catalog):
     md = render.render_readme(catalog)
     assert "\u2014" not in md
-    assert "\u2014" not in render.render_html(catalog)
+    assert "\u2014" not in render.render_site(catalog, CHAPTER.parent)
     assert "\u2014" not in render.render_hub(catalog, CHAPTER.parent)
 
 
@@ -111,29 +111,34 @@ def test_site_url_ignores_code_hosts_and_the_repo():
 # ---------------------------------------------------------------------------
 # site
 # ---------------------------------------------------------------------------
-def test_site_writes_index_and_catalog_js(catalog, tmp_path):
-    index, js = render.write_site(catalog, tmp_path / "docs")
+def test_site_is_the_hub_as_a_whole_page(catalog, tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "catalog.js").write_text("stale")
+    index = render.write_site(catalog, docs, CHAPTER.parent)
     html = index.read_text()
-    assert '<script src="catalog.js"></script>' in html
-    assert "const STANDALONE = false" in html
-    rows = records_from_js(js.read_text())
+    assert not (docs / "catalog.js").exists()
+    assert html.startswith("<!doctype html>") and '<meta charset="utf-8">' in html
+    assert 'name="viewport"' in html and html.rstrip().endswith("</html>")
+    assert "claude:" not in html
+    assert 'data-view="catalog"' in html and 'data-nav="ch01"' in html
+    rows = records_from_js(html)
     assert len(rows) == 6 and {r["id"] for r in rows} >= {"emptydrops", "dreamlet"}
-    assert "const BENCHMARKS = " in js.read_text()
 
 
 @pytest.mark.parametrize("control", ["layer", "kind", "tier", "side", "requires"])
 def test_site_has_a_filter_for(catalog, control):
-    assert f'<select id="{control}"' in render.render_html(catalog)
+    assert f'<select id="{control}"' in render.render_site(catalog, CHAPTER.parent)
 
 
 @pytest.mark.parametrize("column", ["Name", "Categories", "Kind", "Tier", "Side",
                                     "Recovers / gain", "Requires", "Year", "Citations", "Links"])
 def test_site_has_column(catalog, column):
-    assert f">{column}</th>" in render.render_html(catalog)
+    assert f">{column}</th>" in render.render_site(catalog, CHAPTER.parent)
 
 
 def test_site_vocabulary_comes_from_the_schema(catalog):
-    html = render.render_html(catalog)
+    html = render.render_site(catalog, CHAPTER.parent)
     vocab = json.loads(re.search(r"const VOCAB = (\{.*?\});\n", html).group(1))
     assert [t[0] for t in vocab["tiers"]] == list(config.TIERS)
     assert [c[0] for c in vocab["categories"]] == config.CATEGORY_KEYS
@@ -141,11 +146,11 @@ def test_site_vocabulary_comes_from_the_schema(catalog):
 
 
 def test_site_keeps_the_light_dark_theme(catalog):
-    html = render.render_html(catalog)
-    assert "prefers-color-scheme:dark" in html
+    html = render.render_site(catalog, CHAPTER.parent)
+    assert "prefers-color-scheme: dark" in html
     # dark by preference unless toggled to light; dark when toggled to dark
-    assert ":root:not([data-theme=light])" in html and ":root[data-theme=dark]" in html
-    assert "body{margin:0;background:var(--bg)" in html
+    assert ':root:not([data-theme="light"])' in html and ':root[data-theme="dark"]' in html
+    assert 'id="theme"' in html
 
 
 def test_zero_counts_survive_the_slim_payload(catalog):
@@ -256,7 +261,7 @@ def test_hub_has_no_downloads_dialogs_or_fetches(hub):
 
 
 def test_site_keeps_its_download_button(catalog):
-    html = render.render_html(catalog)
+    html = render.render_site(catalog, CHAPTER.parent)
     assert 'id="dl"' in html and "createObjectURL" in html
 
 

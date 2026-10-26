@@ -4,7 +4,7 @@ A comprehensive catalog of single-cell QC and preprocessing tools, methods and e
 
 **291 records** (235 core, 56 adjacent) and 58 benchmark studies, built 2026-10-26. Every entry carries a tier, the side it works on (keeping cells, removing them, or either), what it needs as input, and, where it recovers cells or signal, the reported gain and who measured it.
 
-The full catalog, with filters for layer, category, kind, tier, side and required input, is the site in `docs/` (`make serve`, then http://127.0.0.1:8510/) or the single-file page `make page` writes to `dist/hub.html`. On GitHub, [docs/records.md](docs/records.md) lists every record.
+**Browse it at https://thirtysix.github.io/awesome-single-cell-qc/**: the full catalog, with filters for layer, category, kind, tier, side and required input, and the review chapters. The same page is `docs/index.html` (`make serve`, then http://127.0.0.1:8510/). On GitHub, [docs/records.md](docs/records.md) lists every record.
 
 ## Contents
 
@@ -589,7 +589,7 @@ build.py             validate, merge cached metadata -> data/catalog.json, .tsv
 verify_citations.py  fetch each DOI (Crossref) and PMID (PubMed), match the
                      title, check both name one work -> docs/citation-check.md
 enrich.py            citation counts (OpenAlex), repository activity (GitHub)
-render.py            README.md, docs/index.html, review-chapter tables,
+render.py            README.md, docs/index.html (the site), chapter tables,
                      dist/hub.html
 ```
 

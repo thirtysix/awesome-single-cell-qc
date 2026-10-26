@@ -37,7 +37,7 @@ test:
 build:
 	$(PIPELINE)/build.py $(INPUTS)
 
-## README.md, docs/index.html, docs/catalog.js and the review-chapter tables
+## README.md, docs/records.md, docs/index.html (the site) and the review-chapter tables
 render:
 	$(PIPELINE)/render.py --review-dir $(REVIEW)
 
@@ -81,4 +81,4 @@ scview-proposal: scview-import
 	$(PIPELINE)/scview_export.py
 
 clean:
-	rm -f data/catalog.json data/catalog.tsv docs/catalog.js docs/index.html dist/hub.html
+	rm -f data/catalog.json data/catalog.tsv docs/index.html docs/records.md dist/hub.html
