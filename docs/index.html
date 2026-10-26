@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Awesome Single-Cell QC</title>
+<meta name="description" content="Catalog of 291 single-cell QC and preprocessing tools, methods and evidence, with a map of adjacent concepts.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#1a1d21; --muted:#5c6570; --line:#e3e6ea; --accent:#1b6ac9;
+  --chip:#f1f4f8; --chip-on:#1b6ac9; --chip-on-fg:#fff; --card:#fff; --warn:#a4551a; --ok:#2e7d4f;
+  --series-1:#2a78d6; --grid:#e8ebee;
+  --t0:#e6f0fb; --t0-fg:#1b4f8f; --t1:#e5f4ea; --t1-fg:#1f6b3d; --t2:#fbf1e2; --t2-fg:#8a5212;
+  --t3:#f3e9f7; --t3-fg:#6c3483; --t4:#eef0f2; --t4-fg:#4b5560;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){ --bg:#14171a; --fg:#e6e9ec; --muted:#98a2ad; --line:#2a2f35; --accent:#6aa9f0;
+    --chip:#21262c; --chip-on:#6aa9f0; --chip-on-fg:#101316; --card:#1a1e22; --warn:#e0a06a; --ok:#6fcf97;
+    --series-1:#3987e5; --grid:#262b31;
+    --t0:#18304d; --t0-fg:#a9cbf3; --t1:#173826; --t1-fg:#9edcb4; --t2:#3b2a12; --t2-fg:#f0c48a;
+    --t3:#33213d; --t3-fg:#d6b0ea; --t4:#262b31; --t4-fg:#b8c0c8; }
+}
+:root[data-theme=dark]{ --bg:#14171a; --fg:#e6e9ec; --muted:#98a2ad; --line:#2a2f35; --accent:#6aa9f0;
+  --chip:#21262c; --chip-on:#6aa9f0; --chip-on-fg:#101316; --card:#1a1e22; --warn:#e0a06a; --ok:#6fcf97;
+  --series-1:#3987e5; --grid:#262b31;
+  --t0:#18304d; --t0-fg:#a9cbf3; --t1:#173826; --t1-fg:#9edcb4; --t2:#3b2a12; --t2-fg:#f0c48a;
+  --t3:#33213d; --t3-fg:#d6b0ea; --t4:#262b31; --t4-fg:#b8c0c8; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+header{border-bottom:1px solid var(--line);padding:16px 16px;position:sticky;top:0;background:var(--bg);z-index:10}
+h1{font-size:19px;margin:0 0 3px}
+.sub{color:var(--muted);font-size:13px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+input[type=search],select{background:var(--card);color:var(--fg);border:1px solid var(--line);
+  border-radius:7px;padding:7px 10px;font:inherit;font-size:14px;max-width:100%}
+input[type=search]{flex:1 1 260px;min-width:180px}
+main{padding:16px 16px 60px}
+footer{max-width:110ch;color:var(--muted);font-size:12.5px;margin-top:22px;line-height:1.7}
+.layerhead{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:6px 0 5px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin:0 0 10px}
+.chip{background:var(--chip);border:1px solid var(--line);border-radius:8px;
+  padding:5px 10px;font-size:12.5px;cursor:pointer;user-select:none;text-align:left;
+  display:flex;align-items:center;gap:8px;min-height:30px;color:inherit;font-family:inherit}
+.chip.adj{border-style:dashed}
+.chip .lab{flex:1 1 auto;line-height:1.25}
+.chip[aria-pressed=true]{background:var(--chip-on);color:var(--chip-on-fg);border-color:var(--chip-on)}
+.chip .n{opacity:.65;font-variant-numeric:tabular-nums;flex:0 0 auto}
+.count{color:var(--muted);font-size:13px;margin:4px 0 10px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:1180px;font-size:14px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--bg);cursor:pointer;white-space:nowrap;
+   font-weight:600;font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+th:hover{color:var(--fg)} th .ar{opacity:.5;font-size:10px}
+tbody tr:hover{background:var(--chip)}
+td.name{min-width:230px;max-width:420px}
+td.name .nm{font-weight:600}
+td.name .sm{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+td.rg{min-width:230px;max-width:340px;font-size:13px}
+td.rg .gs{color:var(--muted);font-size:11.5px}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.lnk{white-space:nowrap;font-size:12.5px}
+td.lnk a{margin-right:6px}
+tr.filters th{position:sticky;top:34px;background:var(--bg);padding:4px 6px;cursor:default;
+  text-transform:none;letter-spacing:0;font-weight:400}
+tr.filters input{width:100%;min-width:58px;background:var(--card);color:var(--fg);
+  border:1px solid var(--line);border-radius:5px;padding:3px 6px;font:inherit;font-size:12px}
+.no{color:var(--muted);opacity:.45}
+.cat{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:5px;
+  padding:1px 6px;font-size:11.5px;margin:1px 3px 1px 0;color:var(--muted);white-space:nowrap}
+.cat.adj{border-style:dashed}
+.req{display:inline-block;font-size:11.5px;color:var(--muted);margin:0 4px 1px 0;white-space:nowrap}
+.tier{display:inline-block;border-radius:5px;padding:1px 7px;font-size:12px;font-weight:600;white-space:nowrap}
+.tier.t0{background:var(--t0);color:var(--t0-fg)} .tier.t1{background:var(--t1);color:var(--t1-fg)}
+.tier.t2{background:var(--t2);color:var(--t2-fg)} .tier.t3{background:var(--t3);color:var(--t3-fg)}
+.tier.t4{background:var(--t4);color:var(--t4-fg)}
+.bm{display:block;font-size:11.5px;margin-top:3px}
+.cav{color:var(--warn);font-size:11.5px;cursor:help;border-bottom:1px dotted currentColor}
+.ok{color:var(--ok);font-size:12px;cursor:help}
+.bad{color:var(--warn);font-size:12px;font-weight:700;cursor:help}
+.arch{color:var(--warn);font-size:11.5px}
+.agg{display:block;font-size:11px;color:var(--muted);cursor:help}
+.theme{background:none;border:1px solid var(--line);border-radius:7px;color:var(--fg);
+  padding:7px 10px;cursor:pointer;font:inherit;font-size:14px}
+.stats{margin:0 0 14px}
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.panel{border:1px solid var(--line);border-radius:10px;background:var(--card);display:flex;flex-direction:column}
+.kpi{padding:10px 12px 8px;border-bottom:1px solid var(--line)}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.kpi .s{font-size:11.5px;color:var(--muted)}
+.chart{padding:8px 12px 6px}
+.chart h3{margin:0;font-size:12.5px;font-weight:600}
+.chart p{margin:1px 0 4px;font-size:11.5px;color:var(--muted)}
+.chart svg{display:block;width:100%;height:auto}
+.chart .band:hover{fill:var(--fg);fill-opacity:.05}
+#tip{position:fixed;pointer-events:none;background:var(--card);color:var(--fg);border:1px solid var(--line);
+  border-radius:7px;padding:5px 9px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.16);opacity:0;
+  transition:opacity .1s;z-index:50;white-space:nowrap}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+/* On a phone a sticky header with six controls would cover a third of the screen. */
+@media (max-width:640px){ header{position:static} tr.filters th{top:0} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Awesome Single-Cell QC</h1>
+  <div class="sub">291 records: single-cell QC and preprocessing tools, methods and evidence,
+    with an emphasis on salvaging cells and signal in multiplexed experiments · built 2026-10-26</div>
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search name, summary, gain, caveats, tags…" autocomplete="off">
+    <select id="layer" aria-label="Layer"><option value="">Any layer</option></select>
+    <select id="kind" aria-label="Kind"><option value="">Any kind</option></select>
+    <select id="tier" aria-label="Tier"><option value="">Any tier</option></select>
+    <select id="side" aria-label="Side"><option value="">Any side</option></select>
+    <select id="requires" aria-label="Requires"><option value="">Any input</option></select>
+    <button class="theme" id="stats-toggle" type="button" aria-expanded="true">Hide stats</button>
+    <button class="theme" id="dl" type="button"
+      title="Download the rows currently shown, in the current sort order, as a tab-separated file">Download</button>
+    <button class="theme" id="theme" type="button" title="Toggle light or dark">◐</button>
+  </div>
+</header>
+<main>
+  <div id="cats"></div>
+  <section class="stats" id="stats"><div class="panels" id="panels"></div></section>
+  <div class="count" id="count"></div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+      <tr>
+        <th data-k="name">Name</th>
+        <th data-k="categories">Categories</th>
+        <th data-k="kind">Kind</th>
+        <th data-k="tier_rank">Tier</th>
+        <th data-k="side">Side</th>
+        <th data-k="recovers">Recovers / gain</th>
+        <th data-k="requires">Requires</th>
+        <th data-k="year" class="num">Year</th>
+        <th data-k="citations" class="num">Citations</th>
+        <th data-k="n_links">Links</th>
+      </tr>
+      <tr class="filters">
+        <th><input data-f="name" type="search" placeholder="filter…"></th>
+        <th><input data-f="categories" type="search" placeholder="filter…"></th>
+        <th></th><th></th><th></th>
+        <th><input data-f="recovers" type="search" placeholder="filter…"></th>
+        <th></th>
+        <th><input data-f="year" type="number" min="1980" placeholder="min"></th>
+        <th><input data-f="citations" type="number" min="0" placeholder="min"></th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <footer>
+    Every entry is a hand-written record validated against the hub's schema. A
+    <span class="ok">✓</span> beside a paper means its DOI or PMID was fetched and the
+    returned title matched the record; a <span class="bad">!</span> means the last
+    citation check contradicted it. Citation counts are OpenAlex's count for the record's
+    own primary paper: a rough popularity signal, not a quality measure. Categories with a
+    dashed border belong to the adjacent concept map rather than to QC proper. Gains are
+    labelled with who measured them (independent or self-reported).
+  </footer>
+</main>
+<div id="tip" role="status"></div>
+<script src="catalog.js"></script>
+<script>
+const VOCAB = {"categories":[["demux-hashing","Hashing demultiplexing","core","Assigning cells to samples from hashtag, lipid or CMO tags; tag-count models"],["demux-genotype","Genotype demultiplexing","core","Assigning cells to donors or cell lines from SNPs; hybrids with hashing"],["demux-combinatorial","Combinatorial indexing & split-pool","core","sci-, SPLiT-, Parse-style barcoding and nuclear hashing; their calling and collisions"],["alignment-quantification","Alignment & quantification","core","Read alignment, barcode and UMI correction, count matrices; the choices that set what cell calling sees"],["cell-calling","Cell calling","core","Separating cells from empty droplets; low-RNA cell recovery"],["ambient-rna","Ambient RNA","core","Estimating and removing ambient / soup contamination"],["qc-metrics-thresholds","QC metrics & thresholds","core","Counts, genes, mito and ribo fractions; fixed, adaptive and data-driven thresholds"],["damaged-cells","Damaged & dying cells","core","Detecting damaged, lysed or apoptotic cells (nuclear fraction, splicing, states)"],["doublets","Doublets & multiplets","core","Detecting, estimating and rescuing doublets (RNA-based and tag-based)"],["cell-cycle-and-stress","Cell cycle & stress signatures","core","Dissociation, handling and cell-cycle effects and their correction"],["batch-and-plate-effects","Batch, lane & plate effects","core","Technical effects of lanes, plates, wells and processing batches"],["low-cell-stats","Statistics with few cells","core","Pseudobulk weighting, minimum cells, borrowing strength across conditions, power"],["screen-design","Multiplexed screen design","core","Experimental designs that change how many usable cells and replicates a screen yields"],["discarded-data","Using discarded data","core","Ideas that turn removed barcodes (doublets, damaged cells, empty droplets) into signal"],["qc-benchmarks","QC benchmarks & guides","core","Benchmarks and best-practice guides that compare QC choices"],["normalisation","Normalisation","adjacent","Size factors, transformations, variance stabilisation"],["feature-selection","Feature selection","adjacent","Highly variable / deviant genes"],["integration","Integration & batch correction","adjacent","Removing batch effects while keeping biology"],["clustering-annotation","Clustering & annotation","adjacent","Graph clustering, label transfer, marker-based annotation"],["de-pseudobulk","Differential expression","adjacent","Pseudobulk, mixed models, differential abundance"],["perturbation-models","Perturbation modelling","adjacent","Response estimation and prediction for drugs and genetic perturbations"],["trajectories","Trajectories & RNA velocity","adjacent","Pseudotime, velocity, fate"],["multimodal","Multimodal","adjacent","CITE-seq, multiome, spatial links to QC"]],"layers":[["core","Single-cell QC and preprocessing","covered comprehensively"],["adjacent","Neighbouring scRNA-seq concepts","mapped at lighter depth, with qc_links"]],"kinds":[["tool","software you can run"],["method","an analysis approach without a dedicated tool (or with many implementations)"],["evidence","a study whose finding matters (benchmark, survey, large-scale comparison, cautionary result)"],["design","an experimental design or protocol choice"],["concept","an adjacent-layer concept node"],["hypothesis","a proposed but untested idea, or one tested only anecdotally"]],"tiers":[["standard","default practice in widely used pipelines and best-practice guides"],["benchmarked-sota","outperformed alternatives in at least one independent benchmark"],["benchmarked","evaluated in at least one independent benchmark without being among the best (or with mixed results)"],["published-unbenchmarked","peer-reviewed or preprinted, not yet independently benchmarked"],["hypothesis","proposed, plausible, untested or anecdotal; doi/pmid optional"]],"sides":[["additive","keeps or recovers cells, or extracts more signal from the cells kept"],["subtractive","removes cells, genes or signal judged to be artefact"],["both","does either depending on use (e.g. ambient removal lets cells be kept)"],["neutral","neither (concepts, designs that change what is measured)"]],"requires":[["filtered-matrix","cellranger/STARsolo filtered count matrix"],["raw-matrix","all barcodes incl. empty droplets (raw_feature_bc_matrix)"],["tag-counts","hashtag / lipid / CMO tag count matrix"],["bam","aligned reads (BAM/CRAM)"],["fastq","raw reads (re-alignment needed)"],["genotypes","known or inferable genotypes (SNP VCF, multiple donors or cell lines)"],["spliced-unspliced","spliced / unspliced counts (velocyto, STARsolo Velocyto, alevin-fry USA mode)"],["replicates","biological replicates (wells, donors, cultures) per condition"],["reference","reference profiles or annotated atlas"],["doses-or-time","a dose or time series across conditions"],["multiple-conditions","many conditions to share information across (drugs, perturbations)"],["protein","antibody-derived protein counts (CITE-seq)"]]};
+const STANDALONE = false;
+const BUILD_DATE = '2026-10-26';
+const root = document.documentElement;
+document.getElementById('theme').onclick = () => {
+  const cur = root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Record text can cite other records as [[id]]; the hub page links them.
+const prose = s => STANDALONE ? hubRefs(esc(s)) : esc(s);
+const catLabel = Object.fromEntries(VOCAB.categories.map(c => [c[0], c[1]]));
+const catLayer = Object.fromEntries(VOCAB.categories.map(c => [c[0], c[2]]));
+const tierOrder = VOCAB.tiers.map(t => t[0]);
+const tierDesc = Object.fromEntries(VOCAB.tiers);
+const benchById = Object.fromEntries((typeof BENCHMARKS !== 'undefined' ? BENCHMARKS : []).map(b => [b.id, b]));
+const state = { q:'', cats:new Set(), layer:'', kind:'', tier:'', side:'', requires:'', col:{},
+                sort:'citations', dir:-1 };
+let visible = [];
+
+// Filters can be preset from the URL: ?category=ambient-rna&tier=standard
+const params = new URLSearchParams(location.search);
+if (params.get('category')) params.get('category').split(',').forEach(c => state.cats.add(c));
+['layer','kind','tier','side','requires'].forEach(k => { if (params.get(k)) state[k] = params.get(k); });
+
+const fill = (id, pairs) => {
+  const el = $(id);
+  pairs.forEach(([v, label, title]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = label || v;
+    if (title) o.title = title;
+    el.append(o);
+  });
+  el.value = state[id] || '';
+};
+fill('layer', VOCAB.layers.map(([k, head, desc]) => [k, head, desc]));
+fill('kind', VOCAB.kinds.map(([k, d]) => [k, k, d]));
+fill('tier', VOCAB.tiers.map(([k, d]) => [k, k, d]));
+fill('side', VOCAB.sides.map(([k, d]) => [k, k, d]));
+fill('requires', VOCAB.requires.map(([k, d]) => [k, k, d]));
+
+// Derived once. Sorting the Links column means "which rows have links".
+RECORDS.forEach(t => {
+  t.tier_rank = tierOrder.indexOf(t.tier);
+  t.n_links = (t.url ? 1 : 0) + (t.repo_url ? 1 : 0) + (t.publication_url ? 1 : 0);
+});
+
+// Category chips, one rack per layer, in schema order: the order is the QC
+// pipeline's own, which says more than sorting by size would.
+const catCounts = {};
+RECORDS.forEach(t => t.categories.forEach(c => catCounts[c] = (catCounts[c] || 0) + 1));
+function renderChips() {
+  const box = $('cats'); box.innerHTML = '';
+  VOCAB.layers.forEach(([layer, head]) => {
+    if (state.layer && state.layer !== layer) return;
+    const cats = VOCAB.categories.filter(c => c[2] === layer && catCounts[c[0]]);
+    if (!cats.length) return;
+    const h = document.createElement('div'); h.className = 'layerhead'; h.textContent = head;
+    const rack = document.createElement('div'); rack.className = 'chips';
+    cats.forEach(([key, label, lay, desc]) => {
+      const b = document.createElement('button');
+      b.className = 'chip' + (lay === 'adjacent' ? ' adj' : ''); b.type = 'button'; b.title = desc;
+      b.setAttribute('aria-pressed', state.cats.has(key));
+      b.innerHTML = '<span class="lab">' + esc(label) + '</span><span class="n">' + catCounts[key] + '</span>';
+      b.onclick = () => {
+        state.cats.has(key) ? state.cats.delete(key) : state.cats.add(key);
+        b.setAttribute('aria-pressed', state.cats.has(key));
+        render();
+      };
+      rack.append(b);
+    });
+    box.append(h, rack);
+  });
+}
+
+const YEAR_MS = 365.25 * 24 * 3600 * 1000;
+const matches = t => {
+  if (state.cats.size && !t.categories.some(c => state.cats.has(c))) return false;
+  if (state.layer && t.layer !== state.layer) return false;
+  if (state.kind && t.kind !== state.kind) return false;
+  if (state.tier && t.tier !== state.tier) return false;
+  if (state.side && t.side !== state.side) return false;
+  if (state.requires && !(t.requires || []).includes(state.requires)) return false;
+  for (const [k, v] of Object.entries(state.col)) {
+    if (v === '' || v === undefined) continue;
+    if (k === 'name') {
+      if (!(t.name + ' ' + t.summary).toLowerCase().includes(v)) return false;
+    } else if (k === 'categories') {
+      if (!t.categories.map(c => catLabel[c] || c).join(' ').toLowerCase().includes(v)) return false;
+    } else if (k === 'recovers') {
+      if (!((t.recovers || '') + ' ' + (t.gain || '')).toLowerCase().includes(v)) return false;
+    } else {
+      const n = Number(t[k]);
+      if (!Number.isFinite(n) || n < Number(v)) return false;
+    }
+  }
+  if (state.q) {
+    const hay = [t.name, t.summary, t.recovers, t.gain, t.caveats, t.kind, t.tier, t.side,
+      t.language, (t.tags || []).join(' '), (t.requires || []).join(' '),
+      t.categories.map(c => catLabel[c] || c).join(' ')].join(' ').toLowerCase();
+    if (!state.q.split(/\s+/).every(w => hay.includes(w))) return false;
+  }
+  return true;
+};
+
+const cmp = (a, b) => {
+  const k = state.sort;
+  let x = a[k], y = b[k];
+  if (Array.isArray(x)) { x = x.join(); y = (y || []).join(); }
+  if (k === 'year') { x = parseInt(x, 10); y = parseInt(y, 10); if (isNaN(x)) x = null; if (isNaN(y)) y = null; }
+  if (x === null || x === undefined || x === '') return 1;
+  if (y === null || y === undefined || y === '') return -1;
+  if (typeof x === 'number' && typeof y === 'number') return (x - y) * state.dir;
+  return String(x).localeCompare(String(y)) * state.dir;
+};
+
+// ---------------------------------------------------------------------------
+// Statistics panel: each panel is one number and the distribution behind it,
+// for whatever is currently filtered. One hue throughout, so bar length carries
+// the magnitude and colour is not a second encoding of the same thing.
+// ---------------------------------------------------------------------------
+let statsOpen = true;
+const tip = $('tip');
+const showTip = (evt, html) => {
+  tip.innerHTML = html; tip.style.opacity = '1';
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+};
+const hideTip = () => { tip.style.opacity = '0'; };
+const compact = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n);
+
+function columns(bins, width, height) {
+  const padL = 30, padR = 6, padT = 12, padB = 17;
+  const plotW = Math.max(40, width - padL - padR), plotH = height - padT - padB;
+  const max = Math.max(1, ...bins.map(b => b.value));
+  const band = plotW / bins.length;
+  const barW = Math.max(2, Math.min(24, band - 2));
+  const y = v => padT + plotH - (v / max) * plotH;
+  const parts = [];
+  for (const v of [0, max]) {
+    parts.push('<line x1="' + padL + '" x2="' + (padL + plotW) + '" y1="' + y(v) + '" y2="' + y(v) +
+               '" stroke="var(--grid)" stroke-width="1"/>');
+    parts.push('<text x="' + (padL - 5) + '" y="' + (y(v) + 3.5) +
+               '" text-anchor="end" font-size="9.5" fill="var(--muted)">' + compact(v) + '</text>');
+  }
+  const peak = bins.reduce((a, b) => b.value > a.value ? b : a, bins[0]);
+  bins.forEach((b, i) => {
+    const x = padL + i * band + (band - barW) / 2;
+    const top = y(b.value), h = padT + plotH - top;
+    if (h > 0) {
+      const r = Math.min(4, barW / 2, h);
+      parts.push('<path d="M' + x + ',' + (padT + plotH) + ' L' + x + ',' + (top + r) +
+                 ' Q' + x + ',' + top + ' ' + (x + r) + ',' + top + ' L' + (x + barW - r) + ',' + top +
+                 ' Q' + (x + barW) + ',' + top + ' ' + (x + barW) + ',' + (top + r) +
+                 ' L' + (x + barW) + ',' + (padT + plotH) + ' Z" fill="var(--series-1)"/>');
+    }
+    if (b === peak && b.value > 0 && barW >= 14) {
+      parts.push('<text x="' + (x + barW / 2) + '" y="' + (top - 3) +
+                 '" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--fg)">' +
+                 compact(b.value) + '</text>');
+    }
+    if (b.tick) {
+      parts.push('<text x="' + (x + barW / 2) + '" y="' + (height - 4) +
+                 '" text-anchor="middle" font-size="9.5" fill="var(--muted)">' + esc(b.tick) + '</text>');
+    }
+    parts.push('<rect class="band" x="' + (padL + i * band) + '" y="' + padT + '" width="' + band +
+               '" height="' + plotH + '" fill="transparent" data-tip="' + esc(b.tip) + '"/>');
+  });
+  return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height +
+         '" role="img">' + parts.join('') + '</svg>';
+}
+
+function panel(stat, chart, width) {
+  return '<div class="panel"><div class="kpi"><div class="k">' + esc(stat[0]) + '</div>' +
+    '<div class="v">' + esc(stat[1]) + '</div><div class="s">' + esc(stat[2]) + '</div></div>' +
+    (chart ? '<div class="chart"><h3>' + esc(chart.title) + '</h3><p>' + esc(chart.sub) + '</p>' +
+             columns(chart.bins, width, 120) + '</div>' : '') + '</div>';
+}
+
+// Nominal bins in vocabulary order, with short ticks and the full name in the tooltip.
+const nominalBins = (rows, key, order) => {
+  if (!rows.length) return null;
+  return { bins: order.map(v => {
+    const n = rows.filter(t => t[key] === v).length;
+    const tick = v.length > 11 ? v.split('-').map(p => p[0]).join('').toUpperCase() : v;
+    return { value: n, tick, tip: '<b>' + esc(v) + '</b> ' + n + ' records' };
+  }), n: rows.length };
+};
+const yearBins = (rows, key) => {
+  const years = rows.map(t => parseInt(t[key], 10)).filter(y => y >= 1990 && y <= 2100);
+  if (!years.length) return null;
+  const lo = Math.min(...years), hi = Math.max(...years);
+  const counts = new Map();
+  years.forEach(y => counts.set(y, (counts.get(y) || 0) + 1));
+  const bins = [];
+  for (let y = lo; y <= hi; y++) {
+    const n = counts.get(y) || 0;
+    bins.push({ value: n, tick: (y % 5 === 0 || lo === hi) ? String(y) : '',
+                tip: '<b>' + y + '</b> ' + n + ' records' });
+  }
+  return { bins, n: years.length };
+};
+const LOG_BUCKETS = [[0, 0, 'none'], [1, 9, '1-9'], [10, 99, '10-99'], [100, 999, '100-999'],
+                     [1000, 9999, '1k-10k'], [10000, Infinity, '10k+']];
+const logBins = (rows, key) => {
+  const vals = rows.map(t => t[key]).filter(v => v !== null && v !== undefined && v !== '');
+  if (!vals.length) return null;
+  return { bins: LOG_BUCKETS.map(([lo, hi, tick]) => {
+    const n = vals.filter(v => v >= lo && v <= hi).length;
+    return { value: n, tick, tip: '<b>' + tick + '</b> ' + n + ' records' };
+  }), n: vals.length };
+};
+
+function renderStats(rows) {
+  const total = rows.length;
+  const pct = n => total ? Math.round(100 * n / total) + '%' : '0%';
+  const box = $('panels');
+  const cols = Math.max(1, Math.floor((box.clientWidth + 10) / 270));
+  const w = Math.max(220, Math.floor((box.clientWidth - 10 * (cols - 1)) / cols) - 26);
+  const additive = rows.filter(t => t.side === 'additive' || t.side === 'both').length;
+  const independent = rows.filter(t => t.gain_source === 'independent').length;
+  const withPub = rows.filter(t => t.publication).length;
+  const checked = rows.filter(t => t.verified).length;
+  const tracked = rows.filter(t => t.repo_pushed).length;
+  const active = rows.filter(t => t.repo_pushed && !t.repo_archived &&
+                                  (Date.now() - Date.parse(t.repo_pushed)) / YEAR_MS <= 2).length;
+  const yb = yearBins(rows, 'year'), tb = nominalBins(rows, 'tier', tierOrder);
+  const sb = nominalBins(rows, 'side', VOCAB.sides.map(s => s[0]));
+  const cb = logBins(rows, 'citations');
+  const pb = yearBins(rows.map(t => ({ y: (t.repo_pushed || '').slice(0, 4) })), 'y');
+  const panels = [
+    [['Records shown', total.toLocaleString(),
+      total === RECORDS.length ? 'the whole catalog' : 'of ' + RECORDS.length + ' total'],
+     yb && { title: 'By publication year', sub: yb.n + ' with a year', bins: yb.bins }],
+    [['Keep or recover cells', additive.toLocaleString(), pct(additive) + ' are additive or both'],
+     sb && { title: 'By side', sub: 'what the method does to the cells', bins: sb.bins }],
+    [['Independently measured gain', independent.toLocaleString(), pct(independent) + ' of these'],
+     tb && { title: 'By tier', sub: 'hover a bar for the tier name', bins: tb.bins }],
+    [['With a verified paper', checked.toLocaleString(), withPub + ' with any paper'],
+     cb && { title: 'Citations of the primary paper', sub: cb.n + ' with a count', bins: cb.bins }],
+    [['Actively maintained', active.toLocaleString(),
+      tracked ? Math.round(100 * active / tracked) + '% of ' + tracked + ' with repository data'
+              : 'no repository data yet (make enrich)'],
+     pb && { title: 'Repository last updated', sub: pb.n + ' with a live repository', bins: pb.bins }],
+  ];
+  box.innerHTML = panels.map(([s, c]) => panel(s, c, w)).join('');
+  box.querySelectorAll('[data-tip]').forEach(el => {
+    el.addEventListener('mousemove', e => showTip(e, el.dataset.tip));
+    el.addEventListener('mouseleave', hideTip);
+  });
+}
+
+// The site links to the chapter file; the hub page to the chapter on the same page.
+function reviewHref(t) {
+  if (STANDALONE) return hubReviewHref(t);
+  if (!t.review) return '';
+  const [chapter, anchor] = t.review.split('#');
+  return 'review/' + chapter.replace(/\.md$/, '') + '.md' + (anchor ? '#' + anchor : '');
+}
+
+function render() {
+  const rows = RECORDS.filter(matches).sort(cmp);
+  visible = rows;
+  renderChips();
+  if (statsOpen) renderStats(rows);
+  $('count').textContent = rows.length + ' of ' + RECORDS.length + ' records' +
+    (state.cats.size ? ' · ' + [...state.cats].map(c => catLabel[c] || c).join(', ') : '');
+  if (!RECORDS.length) {
+    $('rows').innerHTML = '<tr><td colspan="10" class="empty">No records yet. They appear here after the next build.</td></tr>';
+    return;
+  }
+  const dash = '<span class="no">-</span>';
+  $('rows').innerHTML = rows.map(t => {
+    const href = t.url || t.repo_url || t.publication_url || '';
+    const cav = t.caveats ? ' <span class="cav" title="' + esc(t.caveats) + '">caveats</span>' : '';
+    // On the hub page the name opens the record's details; its links are in the details.
+    const nameCell = (STANDALONE ? hubNameButton(t)
+      : href ? '<a class="nm" href="' + esc(href) + '">' + esc(t.name) + '</a>'
+             : '<span class="nm">' + esc(t.name) + '</span>') +
+      (t.repo_archived ? ' <span class="arch">archived</span>' : '') +
+      '<span class="sm">' + esc(t.summary) + cav + '</span>';
+    const cats = t.categories.map(c => '<span class="cat' + (catLayer[c] === 'adjacent' ? ' adj' : '') +
+      '" title="' + esc(catLayer[c] || '') + '">' + esc(catLabel[c] || c) + '</span>').join('');
+    const rank = t.tier_rank >= 0 ? Math.min(t.tier_rank, 4) : 4;
+    const benches = (t.benchmark_refs || []).map(b =>
+      '<a class="bm" href="' + esc(b.url) + '" title="' + esc(b.name) + '">benchmarked: ' +
+      esc(b.name.length > 28 ? b.name.slice(0, 27) + '…' : b.name) + '</a>').join('');
+    const tierCell = '<span class="tier t' + rank + '" title="' + esc(tierDesc[t.tier] || '') + '">' +
+      esc(t.tier) + '</span>' + benches;
+    let rg = '';
+    if (t.recovers) rg += prose(t.recovers);
+    if (t.gain) rg += (rg ? '<br>' : '') + '<b>Gain:</b> ' + prose(t.gain) +
+      (t.gain_source && t.gain_source !== 'none' ? ' <span class="gs">(' + esc(t.gain_source) + ')</span>' : '');
+    const req = (t.requires || []).map(r => '<span class="req" title="' + esc((VOCAB.requires.find(x => x[0] === r) || [])[1] || '') +
+      '">' + esc(r) + '</span>').join('');
+    let cites = t.citations != null ? t.citations.toLocaleString()
+      : (t.citation_note ? '<span title="' + esc(t.citation_note) + '">' + dash + '</span>' : dash);
+    if (t.citations != null && t.citations_total && t.citations_papers)
+      cites += '<span class="agg" title="Total across the record\'s own papers; the table sorts on the primary paper.">' +
+               t.citations_total.toLocaleString() + ' / ' + t.citations_papers + 'p</span>';
+    const links = [];
+    if (t.site) links.push('<a href="' + esc(t.site) + '">site</a>');
+    if (t.repo_url) links.push('<a href="' + esc(t.repo_url) + '">code</a>');
+    if (t.publication_url) {
+      const ptip = [t.publication_title, t.publication_venue, t.year].filter(Boolean).join(' · ');
+      let mark = '';
+      if (t.citation_check === 'mismatch')
+        mark = '<span class="bad" title="The last citation check contradicted this record. See docs/citation-check.md.">!</span>';
+      else if (t.verified)
+        mark = '<span class="ok" title="DOI or PMID fetched and the title matched">✓</span>';
+      links.push('<a href="' + esc(t.publication_url) + '" title="' + esc(ptip) + '">' +
+                 (t.publication_is_preprint ? 'preprint' : 'paper') + '</a>' + mark);
+    }
+    const rv = reviewHref(t);
+    if (rv) links.push('<a href="' + esc(rv) + '">review</a>');
+    return (STANDALONE ? '<tr data-id="' + esc(t.id) + '">' : '<tr>') +
+      '<td class="name">' + nameCell + '</td><td>' + cats + '</td>' +
+      '<td>' + esc(t.kind) + '</td><td>' + tierCell + '</td><td>' + esc(t.side) + '</td>' +
+      '<td class="rg">' + (rg || dash) + '</td><td>' + (req || dash) + '</td>' +
+      '<td class="num">' + esc(t.year) + '</td><td class="num">' + cites + '</td>' +
+      '<td class="lnk">' + (links.join('') || dash) + '</td></tr>' +
+      (STANDALONE ? hubDetailRow(t) : '');
+  }).join('');
+}
+
+document.querySelectorAll('[data-f]').forEach(el => {
+  const apply = () => {
+    const v = el.value.trim();
+    if (v === '') delete state.col[el.dataset.f];
+    else state.col[el.dataset.f] = el.type === 'search' ? v.toLowerCase() : v;
+    render();
+  };
+  // One debounce timer PER ELEMENT: a shared timer let editing one box cancel
+  // another's pending update, leaving a cleared filter silently applied.
+  let timer;
+  el.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(apply, 120); });
+  el.addEventListener('click', e => e.stopPropagation());
+});
+document.querySelectorAll('th[data-k]').forEach(th => {
+  th.onclick = () => {
+    const k = th.dataset.k;
+    state.dir = state.sort === k ? -state.dir
+      : (['name', 'categories', 'kind', 'side', 'recovers', 'requires', 'tier_rank'].includes(k) ? 1 : -1);
+    state.sort = k;
+    document.querySelectorAll('th .ar').forEach(a => a.remove());
+    const ar = document.createElement('span');
+    ar.className = 'ar'; ar.textContent = state.dir > 0 ? ' ▲' : ' ▼';
+    th.append(ar);
+    render();
+  };
+});
+let qTimer;
+$('q').oninput = e => { clearTimeout(qTimer); qTimer = setTimeout(() => { state.q = e.target.value.trim().toLowerCase(); render(); }, 120); };
+['layer', 'kind', 'tier', 'side', 'requires'].forEach(id => $(id).onchange = e => {
+  state[id] = e.target.value;
+  if (id === 'layer') [...state.cats].forEach(c => { if (state.layer && catLayer[c] !== state.layer) state.cats.delete(c); });
+  render();
+});
+$('stats-toggle').onclick = () => {
+  statsOpen = !statsOpen;
+  $('stats').style.display = statsOpen ? '' : 'none';
+  $('stats-toggle').textContent = statsOpen ? 'Hide stats' : 'Show stats';
+  $('stats-toggle').setAttribute('aria-expanded', String(statsOpen));
+  if (statsOpen) render();
+};
+let rzTimer;
+addEventListener('resize', () => {
+  clearTimeout(rzTimer);
+  rzTimer = setTimeout(() => { if (statsOpen) renderStats(RECORDS.filter(matches)); }, 150);
+});
+
+// Download exactly what is on screen, tab-separated like data/catalog.tsv.
+const DL_COLS = [
+  ['id', t => t.id], ['name', t => t.name], ['kind', t => t.kind], ['layer', t => t.layer],
+  ['categories', t => t.categories.join('; ')], ['tier', t => t.tier], ['side', t => t.side],
+  ['summary', t => t.summary], ['recovers', t => t.recovers], ['gain', t => t.gain],
+  ['gain_source', t => t.gain_source], ['requires', t => (t.requires || []).join('; ')],
+  ['caveats', t => t.caveats], ['url', t => t.url], ['repository', t => t.repo_url],
+  ['doi', t => t.doi], ['pmid', t => t.pmid], ['cite_title', t => t.cite_title],
+  ['year', t => t.year], ['verified', t => t.verified ? 'yes' : 'no'],
+  ['citations', t => t.citations], ['stars', t => t.repo_stars], ['last_push', t => t.repo_pushed],
+  ['benchmarks', t => (t.benchmarks || []).join('; ')], ['review', t => t.review],
+  ['tags', t => (t.tags || []).join('; ')],
+];
+const tsvCell = v => (v === null || v === undefined) ? '' : String(v).replace(/[\t\r\n]+/g, ' ').trim();
+$('dl').onclick = () => {
+  if (!visible.length) return;
+  const lines = [DL_COLS.map(c => c[0]).join('\t')];
+  for (const t of visible) lines.push(DL_COLS.map(c => tsvCell(c[1](t))).join('\t'));
+  const bits = [];
+  if (state.q) bits.push(state.q.replace(/[^a-z0-9]+/gi, '-'));
+  if (state.cats.size) bits.push([...state.cats].join('-'));
+  ['layer', 'kind', 'tier', 'side', 'requires'].forEach(k => { if (state[k]) bits.push(state[k]); });
+  const stem = ['single-cell-qc', ...bits, visible.length + 'records'].join('_').replace(/_+/g, '_').slice(0, 120);
+  const blob = new Blob(['﻿' + lines.join('\n') + '\n'], {type: 'text/tab-separated-values;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = stem + '.tsv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+};
+
+render();
+</script>
+</body>
+</html>

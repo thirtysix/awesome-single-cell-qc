@@ -1,0 +1,595 @@
+# T4: designing the next screens for more usable cells and replicates.
+# Hand-written records; see curation/schema.yaml. Review: docs/review/04-screen-design.md
+# Conventions used here: evidence studies (benchmarks, resources) carry tier published-unbenchmarked;
+# design records with no single primary paper leave doi/pmid empty and are verified: false by construction,
+# with their verified sources listed under papers.
+records:
+
+  # --- Large multiplexed drug screens ------------------------------------------------------------
+  - id: sci-plex
+    name: sci-Plex
+    kind: design
+    layer: core
+    categories: [screen-design, demux-combinatorial]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Nuclear hashing with unmodified polyadenylated oligos combined with sci-RNA-seq3 combinatorial indexing, used to read thousands of independently treated wells in one experiment"
+    recovers: "conditions per experiment, collision (doublet) flags from well hashes, and cell number per well as a viability readout"
+    gain: "4,992 independently treated wells (188 compounds x 4 doses x 3 cell lines, in duplicate) and 649,340 cells in one experiment; median 100-200 cells per condition; replicate-well pseudobulk Pearson r = 0.99; hashes flagged 95.5% of interspecies collisions at collision rates of 7-23%"
+    gain_source: self-reported
+    requires: [fastq, tag-counts, multiple-conditions, doses-or-time]
+    caveats: "Nuclei rather than whole cells, median 1,071-2,407 mRNA UMIs per cell in the 188-compound screen; collision rate is set by nuclei per final PCR well; lab-built protocol rather than a kit; no independent benchmark"
+    url: "https://github.com/cole-trapnell-lab/sci-plex"
+    repo: cole-trapnell-lab/sci-plex
+    language: R
+    doi: 10.1126/science.aax6234
+    pmid: "31806696"
+    cite_title: "Massively multiplex chemical transcriptomics at single-cell resolution"
+    year: 2020
+    verified: true
+    track: T4
+    review: 04-screen-design#sci-plex
+    tags: [drug-screen, nuclei, hashing, combinatorial-indexing, fixed, dose-response]
+
+  - id: sci-plex-gxe
+    name: sci-Plex-GxE
+    kind: design
+    layer: core
+    categories: [screen-design, demux-combinatorial]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "sci-Plex extended with CROP-seq guide capture so drug, dose and CRISPR perturbation are read from the same nucleus, with two independent transductions per condition"
+    recovers: "true replicates (independent transductions) and hash-based doublet removal in a gene-by-drug grid"
+    gain: "1,052,205 cells over 28,242 conditions (14,121 gene-by-environment combinations x 2 independent transductions); 94.3% of cells assigned to a condition after doublet removal; about 35 cells per condition on average (calculated from the reported totals); pilot: 94.4% of 18,585 cells assigned to a well"
+    gain_source: self-reported
+    requires: [fastq, tag-counts, multiple-conditions, doses-or-time, replicates]
+    caveats: "Few cells per gene-by-drug condition, so analyses pool guides per gene; guide assignment needed extra enrichment PCR cycles in complex libraries; no independent benchmark"
+    doi: 10.1016/j.xgen.2023.100487
+    pmid: "38278156"
+    cite_title: "Multiplex single-cell chemical genomics reveals the kinase dependence of the response to targeted therapy"
+    year: 2024
+    verified: true
+    track: T4
+    review: 04-screen-design#sci-plex-gxe
+    tags: [drug-screen, crispr, nuclei, hashing, replicates]
+
+  - id: mix-seq
+    name: MIX-Seq
+    kind: design
+    layer: core
+    categories: [screen-design, demux-genotype]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Pools of 24-99 cancer cell lines are co-treated in one culture and each cell is assigned to its line from transcribed SNPs, with Cell Hashing layered on for time points or doses"
+    recovers: "cell lines and conditions per lane without per-line tags; empty droplets and doublets recognised as SNP mixtures"
+    gain: "99-line trametinib pool: average 130 cells per line per condition, 97 of 99 lines with at least 20 cells; 0 of 84,869 cells assigned to an out-of-pool line from a 494-line reference; classification robust with 50-100 detected SNP sites; downsampling suggested tens of cells per condition suffice for a per-line response profile; up to 40,000 cells loaded per 10x channel"
+    gain_source: self-reported
+    requires: [genotypes, bam, multiple-conditions]
+    caveats: "Lines in one pool share one well, so they are contexts rather than independent replicates of the treatment; cytotoxic drugs deplete the most sensitive lines, so cells are fewest where effects are largest; needs reference SNP profiles (approach similar to [[demuxlet]])"
+    url: "https://github.com/broadinstitute/mix_seq_ms"
+    repo: broadinstitute/mix_seq_ms
+    language: R
+    doi: 10.1038/s41467-020-17440-w
+    pmid: "32855387"
+    cite_title: "Multiplexed single-cell transcriptional response profiling to define cancer vulnerabilities and therapeutic mechanism of action"
+    year: 2020
+    verified: true
+    track: T4
+    review: 04-screen-design#mix-seq
+    tags: [drug-screen, genotype, cell-line-pool, superloading, hashing]
+
+  - id: tahoe-100m
+    name: Tahoe-100M
+    kind: design
+    layer: core
+    categories: [screen-design, demux-combinatorial, batch-and-plate-effects]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Atlas of about 100 million cells from 50 cancer lines pooled as balanced cell villages in each well, treated with 1,100 drug-dose conditions and read with Parse split-pool barcoding plus SNP demultiplexing"
+    recovers: "cells per condition at atlas scale: each drug-dose well yields one condition per pooled line"
+    gain: "Preprint figures: 153 million barcoded cells, 95.6 million (about 62%) passed full filters; 52,886 line-drug-dose conditions with a median of 1,287 cells each; demuxlet benchmark accuracy above 98% with over 90% of cells called singlets; median correlation 0.975 for matched versus 0.915 for unmatched conditions"
+    gain_source: self-reported
+    requires: [fastq, genotypes, multiple-conditions, doses-or-time]
+    caveats: "One well per drug-dose (plate 14 duplicated plate 6 and was held out for validation), so treatment is not replicated across wells; 3 of 50 lines dropped for consistently low counts; conditions under 50 cells excluded; control-media wells at fixed positions H11 and H12 of each plate, DMSO well count per plate not stated; design details read from the bioRxiv preprint"
+    url: "https://huggingface.co/datasets/tahoebio/Tahoe-100M"
+    language: web
+    doi: 10.1016/j.cell.2026.08.035
+    pmid: "42753697"
+    cite_title: "Tahoe-100M: Mapping drug-induced molecular phenotypes at single-cell resolution"
+    year: 2026
+    verified: true
+    papers: ["doi:10.1101/2025.02.20.639398"]
+    track: T4
+    review: 04-screen-design#tahoe-100m
+    tags: [drug-screen, cell-village, genotype, split-pool, fixed, atlas]
+
+  - id: cell-village
+    name: Cell villages (pooled genotypes in one dish)
+    kind: design
+    layer: core
+    categories: [screen-design, batch-and-plate-effects]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Cells from many donors or lines are cultured together in one dish and assigned back to their donor from transcribed SNPs, so lines share one environment instead of one well each"
+    recovers: "donors or lines per well without per-line tags, and removal of well-to-well confounding between lines"
+    gain: "Neural progenitors from 44 donors cultured in one shared environment and assigned by Dropulation; the same pooling idea carries 50 cancer lines per well in Tahoe-100M and up to 99 lines in MIX-Seq"
+    gain_source: self-reported
+    requires: [genotypes]
+    caveats: "Lines compete, so fast-growing and resistant lines dominate after treatment; the dish is one replicate of the environment; interactions between lines through the shared medium were not measured in these studies"
+    repo: broadinstitute/Drop-seq
+    language: Java
+    doi: 10.1016/j.stem.2023.01.010
+    pmid: "36796362"
+    cite_title: "Natural variation in gene expression and viral susceptibility revealed by neural progenitor cell villages"
+    year: 2023
+    verified: true
+    track: T4
+    review: 04-screen-design#cell-village
+    tags: [genotype, pooling, cell-village, donors]
+
+  # --- Sample tags: hashing reagents and loading --------------------------------------------------
+  - id: cell-hashing
+    name: Cell Hashing (antibody hashtags)
+    kind: design
+    layer: core
+    categories: [screen-design, demux-hashing, doublets]
+    side: additive
+    tier: standard
+    summary: "Oligo-tagged antibodies against ubiquitous surface proteins label each sample before pooling, so samples share one lane and cross-sample multiplets become identifiable"
+    recovers: "cells per lane through superloading, and doublets that RNA-only methods miss"
+    gain: "8-donor PBMC pool superloaded for about 20,000 singlets: modelled unresolved multiplet rate 3.1%, against about 4,000 singlets at the same rate without hashing (described as about 400% more cells for the same cost); observed 14,002 singlets and 2,974 identifiable multiplets"
+    gain_source: self-reported
+    requires: [tag-counts, filtered-matrix]
+    caveats: "Needs surface epitopes, so weaker on nuclei (antibody nuclei hashing OCA 0.51-0.65 against 0.84 for cholesterol oligos in Mylka 2022); same-sample doublets stay invisible; calling with [[htodemux]], [[multiseqdemux]] or other T1 tools"
+    doi: 10.1186/s13059-018-1603-1
+    pmid: "30567574"
+    cite_title: "Cell Hashing with barcoded antibodies enables multiplexing and doublet detection for single cell genomics"
+    year: 2018
+    verified: true
+    benchmarks: [mylka-2022-hashing-comparison, brown-2024-multiplexing-reagents]
+    track: T4
+    review: 04-screen-design#cell-hashing
+    tags: [hashing, superloading, doublets, antibody]
+
+  - id: multi-seq
+    name: MULTI-seq (lipid and cholesterol tags)
+    kind: design
+    layer: core
+    categories: [screen-design, demux-hashing]
+    side: additive
+    tier: benchmarked-sota
+    summary: "Lipid- and cholesterol-modified oligos insert into membranes to barcode live cells or nuclei of any species before pooling"
+    recovers: "low-RNA cells that a UMI threshold would discard, and doublets including transcriptionally similar ones"
+    gain: "Independent (Mylka 2022): cholesterol-oligo hashing of nuclei reached overall classification accuracy 0.84 against 0.51-0.65 for antibody nuclei hashing, and lipids beat antibodies on mouse brain cells; self-reported: in a PDX tumour, 90.8% of sequenced neutrophils fell below the Cell Ranger UMI threshold and were kept by MULTI-seq classification"
+    gain_source: independent
+    requires: [tag-counts, raw-matrix]
+    caveats: "On cell lines lipid tags left more cells unassigned than antibodies (7% MULTI-seq LMO and 21% custom LMO against 1.1-1.8% TotalSeq) and swapped tags in 0.89% of singlets (Mylka 2022); BSA quenches LMO labelling of nuclei; calling with [[multiseqdemux]] or other T1 tools"
+    repo: chris-mcginnis-ucsf/MULTI-seq
+    language: R
+    doi: 10.1038/s41592-019-0433-8
+    pmid: "31209384"
+    cite_title: "MULTI-seq: sample multiplexing for single-cell RNA sequencing using lipid-tagged indices"
+    year: 2019
+    verified: true
+    papers: ["doi:10.1186/s13059-022-02628-8"]
+    benchmarks: [mylka-2022-hashing-comparison, brown-2024-multiplexing-reagents]
+    track: T4
+    review: 04-screen-design#multi-seq
+    tags: [hashing, lipid, nuclei, low-rna-rescue]
+
+  - id: nucleus-hashing
+    name: Nucleus hashing (antibody)
+    kind: design
+    layer: core
+    categories: [screen-design, demux-hashing]
+    side: additive
+    tier: benchmarked
+    summary: "Barcoded antibodies against nuclear pore complex proteins label nuclei by sample so nuclei can be pooled and overloaded, with DemuxEM calling sample of origin"
+    recovers: "nuclei per lane through overloading with detectable inter-sample multiplets"
+    gain: "Loading 500 to 4,500 nuclei per ul gave comparable cell types and genes per nucleus; DemuxEM agreed with demuxlet on 96% of nuclei; estimated multiplet rate 2.8% against 2.7% expected when 7,000 nuclei were loaded"
+    gain_source: self-reported
+    requires: [tag-counts, raw-matrix]
+    caveats: "Extra labelling and washing steps left an average nuclei yield of about 33%; an independent comparison found antibody nuclei hashing less accurate than cholesterol-oligo hashing (OCA 0.51-0.65 against 0.84, Mylka 2022), so it has been benchmarked without winning; one sample can dominate ambient hashtags; calling tool is [[demuxem]]"
+    doi: 10.1038/s41467-019-10756-2
+    pmid: "31266958"
+    cite_title: "Nuclei multiplexing with barcoded antibodies for single-nucleus genomics"
+    year: 2019
+    verified: true
+    benchmarks: [mylka-2022-hashing-comparison]
+    track: T4
+    review: 04-screen-design#nucleus-hashing
+    tags: [hashing, nuclei, antibody, superloading]
+
+  - id: superloading
+    name: Superloading with sample multiplexing
+    kind: design
+    layer: core
+    categories: [screen-design, doublets]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Loading a droplet lane well above the standard concentration when cells carry sample tags or genotypes, so cross-sample multiplets are removed and more singlets are kept per lane"
+    recovers: "singlets per lane and per unit cost"
+    gain: "scPower cost-power model (independent of the hashing authors): with doublet detection, overloading lanes raised DE and eQTL power under a fixed budget even after doublets were discarded; Cell Hashing (self-reported, modelled): about 4x more singlets at a matched unresolved multiplet rate"
+    gain_source: independent
+    requires: [tag-counts, genotypes]
+    caveats: "Needs either tags or genotypes; same-sample multiplets stay undetected (about 1/N of multiplets for N equal samples); Mylka 2022 saw 48% more captured cells give 125% more doublets and 325% more unassigned barcodes; scPower notes observed doublet rates above its model, so modelled gains are upper bounds; calling with [[demuxlet]], [[htodemux]] or similar T1 tools"
+    papers: ["doi:10.1186/s13059-018-1603-1", "doi:10.1038/s41467-021-26779-7", "doi:10.1038/s41467-019-10756-2", "doi:10.1186/s13059-022-02628-8"]
+    verified: false
+    track: T4
+    review: 04-screen-design#superloading
+    tags: [superloading, doublets, hashing, genotype, cost]
+
+  # --- Combinatorial indexing and split-pool -------------------------------------------------------
+  - id: split-seq-parse
+    name: SPLiT-seq / Parse Evercode
+    kind: design
+    layer: core
+    categories: [demux-combinatorial, screen-design]
+    side: additive
+    tier: benchmarked
+    summary: "Fixed cells or nuclei are barcoded in situ through rounds of split-pool ligation in plates, so the first-round well doubles as a sample barcode without hashing"
+    recovers: "samples per run (96-384 per commercial kit, vendor-reported) and storage of fixed cells; fewer stressed cells than unfixed droplet capture in one organoid comparison"
+    gain: "Independent: about 2x genes per cell against 10x 3' on mouse thymocytes (Filippov 2024); post-QC retention 95.6% against 87.2% and fewer stressed cells than 10x CellPlex on cerebellar organoids (Sarieva 2026); self-reported: 0.1% mouse-human collisions and about $0.01 per cell library preparation (2018)"
+    gain_source: independent
+    requires: [fastq, multiple-conditions]
+    caveats: "Lower recovery from input: about 27% against 53% for 10x on PBMCs, 16.5% against 42.7% on organoids; about 80-85% of reads carry valid barcodes against 97-98% for 10x; collisions rise with cells per experiment (2.5% expected for 150,000 nuclei in the original 4-round design); vendor pipeline split-pipe is not open source"
+    url: "https://www.parsebiosciences.com"
+    doi: 10.1126/science.aam8999
+    pmid: "29545511"
+    cite_title: "Single-cell profiling of the developing mouse brain and spinal cord with split-pool barcoding"
+    year: 2018
+    verified: true
+    papers: ["doi:10.3390/ijms25073828", "doi:10.1186/s12864-024-10976-x", "doi:10.1016/j.isci.2026.114780"]
+    benchmarks: [de-simone-2025-kit-comparison, abrf-2026-preservation-multisite, xie-2024-parse-vs-10x, sarieva-2026-parse-vs-cellplex, filippov-2024-thymocyte-platforms, brown-2024-multiplexing-reagents]
+    track: T4
+    review: 04-screen-design#split-seq-parse
+    tags: [split-pool, fixed, combinatorial-indexing, kit]
+
+  - id: sci-rna-seq3
+    name: sci-RNA-seq3
+    kind: design
+    layer: core
+    categories: [demux-combinatorial]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Three-level single-cell combinatorial indexing of fixed nuclei (reverse-transcription, ligation and PCR barcodes) that scales exponentially with plate size"
+    recovers: "cells per experiment at a reagent cost near one cent per cell; reverse-transcription wells act as sample barcodes"
+    gain: "About 2 million nuclei from 61 mouse embryos in one experiment (2019); optimised protocol (Martin 2023): reagent cost about 1 cent per cell or less, DSP/methanol fixation gives more UMIs than paraformaldehyde, and new buffers reduce nuclei loss during washes"
+    gain_source: self-reported
+    requires: [fastq]
+    caveats: "Historically lower sensitivity than droplet kits; collision rate is set by nuclei per final well; nuclear input under-represents cytoplasmic transcripts; lab protocol that needs liquid handling and optimisation"
+    doi: 10.1038/s41586-019-0969-x
+    pmid: "30787437"
+    cite_title: "The single-cell transcriptional landscape of mammalian organogenesis"
+    year: 2019
+    verified: true
+    papers: ["doi:10.1038/s41596-022-00752-0"]
+    track: T4
+    review: 04-screen-design#sci-rna-seq3
+    tags: [combinatorial-indexing, nuclei, fixed]
+
+  - id: scifi-rna-seq
+    name: scifi-RNA-seq
+    kind: design
+    layer: core
+    categories: [demux-combinatorial, screen-design]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "One round of in-cell preindexing followed by deliberately overloaded droplets, so several cells per droplet are resolved by the pair of preindex and droplet barcodes"
+    recovers: "cells per channel: transcriptomes from multi-cell droplets are kept instead of discarded as doublets"
+    gain: "Up to 150,000 cells per Chromium channel and over 1 million per chip; 100-fold overloading kept a stable emulsion; recovered transcriptomes scaled linearly from 15,300 to 765,000 loaded nuclei; no loss of complexity in droplets holding up to 15 nuclei"
+    gain_source: self-reported
+    requires: [fastq]
+    caveats: "Preindexing lost about half the input before loading (nuclei recovery 53.3% for cell lines, 41.1% for primary material); uses 10x ATAC beads outside vendor support; no independent benchmark"
+    repo: epigen/scifiRNA-seq
+    language: Python
+    doi: 10.1038/s41592-021-01153-z
+    pmid: "34059827"
+    cite_title: "Ultra-high-throughput single-cell RNA sequencing and perturbation screening with combinatorial fluidic indexing"
+    year: 2021
+    verified: true
+    track: T4
+    review: 04-screen-design#scifi-rna-seq
+    tags: [combinatorial-indexing, overloading, crispr]
+
+  - id: uda-seq
+    name: UDA-seq
+    kind: design
+    layer: core
+    categories: [demux-combinatorial]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Overloaded droplets are barcoded first and a plate-based post-indexing round then splits each droplet barcode into single cells, across RNA, ATAC and multiome modalities"
+    recovers: "cells and samples per channel at a low collision rate"
+    gain: "Collision rate 1.23% with 96-well post-indexing against 6.29% expected from the droplet barcode alone; over 100,000 cells from three dozen frozen clinical biopsies in one channel"
+    gain_source: self-reported
+    requires: [fastq]
+    caveats: "Cell recovery about 57% (3' RNA) and 37% (multiome); new method without independent benchmark"
+    doi: 10.1038/s41592-024-02586-y
+    pmid: "39833568"
+    cite_title: "UDA-seq: universal droplet microfluidics-based combinatorial indexing for massive-scale multimodal single-cell sequencing"
+    year: 2025
+    verified: true
+    track: T4
+    review: 04-screen-design#uda-seq
+    tags: [combinatorial-indexing, overloading, multimodal, clinical]
+
+  - id: split-pool-input-recovery
+    name: Input-to-output recovery, split-pool versus droplet
+    kind: evidence
+    layer: core
+    categories: [screen-design, demux-combinatorial]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Independent comparisons that report cells recovered relative to cells put in for Parse split-pool barcoding and 10x droplet capture"
+    gain: "PBMCs (Xie 2024): about 53% of input cells recovered with 10x against about 27% with Parse, valid-barcode reads about 98% against 85%; cerebellar organoids (Sarieva 2026): 42.7% against 16.5%, with post-QC retention 87.2% against 95.6%"
+    gain_source: independent
+    requires: [fastq]
+    caveats: "Two studies on different samples; Parse kits accept far more input cells, so a lower fraction can still give more cells; recovery depends on fixation and washing; De Simone 2025 reports recovery against target instead (Parse 122%), so denominators differ between studies"
+    doi: 10.3390/ijms25073828
+    pmid: "38612639"
+    cite_title: "Comparative Analysis of Single-Cell RNA Sequencing Methods with and without Sample Multiplexing"
+    year: 2024
+    verified: true
+    papers: ["doi:10.1016/j.isci.2026.114780", "doi:10.1186/s12864-024-10976-x"]
+    track: T4
+    review: 04-screen-design#split-pool-input-recovery
+    tags: [benchmark, recovery, split-pool, droplet]
+
+  # --- Fixed and probe-based platforms -------------------------------------------------------------
+  - id: 10x-flex
+    name: 10x Chromium Flex (fixed RNA profiling)
+    kind: design
+    layer: core
+    categories: [screen-design, demux-hashing]
+    side: additive
+    tier: benchmarked-sota
+    summary: "Probe-based whole-transcriptome assay on formaldehyde-fixed cells or nuclei in which probe barcodes multiplex samples before droplet partitioning"
+    recovers: "fragile cells and queued samples through fixation and storage, and samples per run through probe barcodes"
+    gain: "Independent: best overall of nine commercial kits on PBMCs and top tier for genes per cell (De Simone 2025); fixation retained fragile granulocytes better than fresh 10x 3' across nine sites after 4 weeks at -80 C (ABRF 2026); vendor-reported: up to 384 samples and 100 million cells per week in a 96-well plate format (October 2025 release)"
+    gain_source: independent
+    requires: [fastq]
+    caveats: "Human and mouse probe sets only; probes miss most mitochondrial transcripts, so the mitochondrial fraction loses its usual QC meaning; more cross-site variation from on-site processing than other preserved workflows (ABRF 2026); core-facility guidance relaying 10x protocol CG000782: at least 25,000 (10x support advises 75,000) cells per fixation and over about 13,000 targeted cells per sample pushes multiplets above 5%"
+    url: "https://www.10xgenomics.com/products/flex"
+    verified: false
+    papers: ["doi:10.1093/nar/gkae1186", "doi:10.7171/001c.162768"]
+    benchmarks: [de-simone-2025-kit-comparison, abrf-2026-preservation-multisite, brown-2024-multiplexing-reagents]
+    track: T4
+    review: 04-screen-design#10x-flex
+    tags: [fixed, probe-based, kit, multiplexing, vendor]
+
+  - id: de-simone-2025
+    name: De Simone et al. 2025 nine-kit comparison
+    kind: evidence
+    layer: core
+    categories: [screen-design, qc-benchmarks]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Nine commercial scRNA-seq kits run on PBMCs from one donor and scored on cost, time, cell recovery, read utilisation, sensitivity and cell-type resolution"
+    gain: "Cell recovery against target ranged from about 70% (BD Rhapsody) to 122% (Parse); 10x Flex top tier for genes per cell and best overall; Flex, 10x 3' and BD gave the highest UMIs per cell"
+    gain_source: independent
+    requires: [fastq]
+    caveats: "One donor and PBMCs only; Parse and Scale were run once each because of kit cost; recovery uses each kit's own cell caller, and the Honeycomb and Fluent callers depend on user parameters"
+    doi: 10.1093/nar/gkae1186
+    pmid: "39675380"
+    cite_title: "A comprehensive analysis framework for evaluating commercial single-cell RNA sequencing technologies"
+    year: 2025
+    verified: true
+    track: T4
+    review: 04-screen-design#de-simone-2025
+    tags: [benchmark, platforms, cost, recovery]
+
+  - id: abrf-preservation-2026
+    name: ABRF multisite preservation study 2026
+    kind: evidence
+    layer: core
+    categories: [screen-design, qc-benchmarks, batch-and-plate-effects]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Nine core facilities processed the same fixed or cryopreserved leukocytes with 10x Flex, Parse Evercode WT v2 and Honeycomb HIVE and compared them with fresh 10x 3'"
+    gain: "After 4 weeks at -80 C, fixation (Flex) and cryopreservation (HIVE) retained granulocytes, about half of leukocytes, better than fresh 10x 3' processing; Flex showed more cross-site technical variation than the other preserved workflows"
+    gain_source: independent
+    requires: [fastq]
+    caveats: "Comparisons are not symmetric (Flex against fresh 3', HIVE day 1 against day 28); leukocytes and PBMCs only; the Flex mitochondrial fraction is low by probe design"
+    doi: 10.7171/001c.162768
+    pmid: "42281660"
+    cite_title: "Multisite Assessment of Methods for Cell Preservation Upstream of Single-Cell RNA Sequencing"
+    year: 2026
+    verified: true
+    track: T4
+    review: 04-screen-design#abrf-preservation-2026
+    tags: [benchmark, fixed, cryopreservation, multisite, granulocytes]
+
+  # --- Fixation and storage ------------------------------------------------------------------------
+  - id: methanol-fixation
+    name: Methanol fixation
+    kind: design
+    layer: core
+    categories: [screen-design, damaged-cells]
+    side: additive
+    tier: benchmarked-sota
+    summary: "Dissociated cells are fixed in 80% methanol and stored, then rehydrated for droplet scRNA-seq, which separates harvest from capture"
+    recovers: "cells and states that would degrade while samples wait, including low-RNA cells after storage"
+    gain: "Independent (Gutierrez-Franco 2023): on hiPSC-derived neural cells methanol kept cell composition closest to fresh with little expression bias, while DMSO cryopreservation shifted composition and induced stress and apoptosis genes; self-reported (Alles 2017): unchanged genes and UMIs per cell in human-mouse mixtures after storage for weeks"
+    gain_source: independent
+    caveats: "Wohnhaas 2019 preferred DMSO cryopreservation for other cell types, so the best choice depends on cell type; DMSO cryopreservation gave the highest library complexity in the neural comparison"
+    doi: 10.1186/s12915-017-0383-5
+    pmid: "28526029"
+    cite_title: "Cell fixation and preservation for droplet-based single-cell transcriptomics"
+    year: 2017
+    verified: true
+    papers: ["doi:10.1038/s42003-023-04834-x", "doi:10.1038/s41598-019-46932-z"]
+    benchmarks: [gutierrez-franco-2023-preservation, wohnhaas-2019-preservation, denisenko-2020-dissociation-storage]
+    track: T4
+    review: 04-screen-design#methanol-fixation
+    tags: [fixed, preservation, methanol]
+
+  - id: dsp-fixation
+    name: DSP reversible fixation
+    kind: design
+    layer: core
+    categories: [screen-design, damaged-cells]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Reversible amine crosslinking with DSP (Lomant's reagent) stabilises single cells for later RNA-seq and is undone with a reducing agent"
+    recovers: "the treated state at the moment of fixation, and a viability record because fixed cells keep propidium iodide"
+    gain: "K562 cells: fresh against fixed bulk r above 0.93; fixed replicates stored 3 or 7 days r about 0.97, comparable to fresh replicates; less cell-to-cell variation in cDNA yield than fresh cells"
+    gain_source: self-reported
+    caveats: "Slightly lower cDNA yield and a detectable 3' bias; shown on the Fluidigm C1, later adopted in optimised sci-RNA-seq3 (DSP/methanol) and FixNCut"
+    doi: 10.1038/s41598-018-20372-7
+    pmid: "29391536"
+    cite_title: "A practical solution for preserving single cells for RNA sequencing"
+    year: 2018
+    verified: true
+    track: T4
+    review: 04-screen-design#dsp-fixation
+    tags: [fixed, preservation, dsp, reversible]
+
+  - id: fixncut
+    name: FixNCut
+    kind: design
+    layer: core
+    categories: [screen-design, cell-cycle-and-stress]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Tissue is reversibly fixed with DSP before enzymatic dissociation, so dissociation-induced stress and necrosis are not written into the transcriptome"
+    recovers: "cells and states lost or distorted during dissociation and transport"
+    gain: "Preserved RNA integrity, library complexity and cell composition in human and mouse tissues while reducing stress-related signatures, on 10x 3' v3.1"
+    gain_source: self-reported
+    caveats: "Most relevant to tissues and organoids; cultured-cell screens can fix in the well instead; no independent benchmark yet"
+    doi: 10.1186/s13059-024-03219-5
+    pmid: "38553769"
+    cite_title: "FixNCut: single-cell genomics through reversible tissue fixation and dissociation"
+    year: 2024
+    verified: true
+    track: T4
+    review: 04-screen-design#fixncut
+    tags: [fixed, preservation, dissociation, stress]
+
+  # --- Cells, depth and replicates -----------------------------------------------------------------
+  - id: scperturb
+    name: scPerturb
+    kind: evidence
+    layer: core
+    categories: [screen-design, low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Harmonised collection of 44 single-cell perturbation datasets with energy-distance statistics, used to derive cells-per-perturbation and depth guidelines"
+    gain: "Significant perturbations fell as cells per perturbation were subsampled, and significance saturated near 500 UMIs per cell; guideline of at least 200-500 cells per perturbation and about 1,000 UMIs per cell; sci-Plex 3: 107 of 188 drugs significant by E-test"
+    gain_source: independent
+    requires: [multiple-conditions]
+    caveats: "The guideline targets distinguishing a perturbation from control by E-test, a stricter goal than estimating a mean shift (MIX-Seq found tens of cells enough for that); E-distance itself grows as cells fall, so compare conditions at equal cell numbers"
+    repo: sanderlab/scPerturb
+    language: Python
+    doi: 10.1038/s41592-023-02144-y
+    pmid: "38279009"
+    cite_title: "scPerturb: harmonized single-cell perturbation data"
+    year: 2024
+    verified: true
+    track: T4
+    review: 04-screen-design#scperturb
+    tags: [perturbation, resource, power, depth]
+
+  - id: scpower
+    name: scPower
+    kind: tool
+    layer: core
+    categories: [screen-design, low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "R package and web tool that models detection power for multi-sample DE and eQTL designs from samples, cells per sample and reads per cell under a budget, including overloading-induced doublets"
+    recovers: "power per unit budget by choosing samples, cells and depth together"
+    gain: "Across platforms, shallow sequencing of many cells gave higher overall power than deep sequencing of fewer cells; with doublet detection, overloading lanes increased power despite discarding doublets"
+    gain_source: self-reported
+    requires: [replicates]
+    caveats: "Built for comparisons between individuals (donors as replicates), not drug-by-line grids; its doublet model is a lower bound on observed rates; priors come from PBMC data unless re-fitted; Mandric 2020 reached the same more-samples-lower-depth conclusion for cell-type eQTL"
+    repo: heiniglab/scPower
+    language: R
+    doi: 10.1038/s41467-021-26779-7
+    pmid: "34785648"
+    cite_title: "scPower accelerates and optimizes the design of multi-sample single cell transcriptomic studies"
+    year: 2021
+    verified: true
+    papers: ["doi:10.1038/s41467-020-19365-w"]
+    track: T4
+    review: 04-screen-design#scpower
+    tags: [power, design, budget, depth]
+
+  - id: sequencing-depth-allocation
+    name: Sequencing depth allocation (one read per cell per gene)
+    kind: evidence
+    layer: core
+    categories: [screen-design]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Mathematical framework showing that, for a fixed read budget, gene distribution properties are estimated best at about one read per cell per gene with an empirical Bayes estimator"
+    gain: "The optimal allocation gave about half the relative error of the depth used in a standard 10x PBMC 4k dataset"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Targets population-level gene properties, not per-cell calls or DE between conditions; assumes the empirical Bayes estimator is used rather than plug-in estimates"
+    doi: 10.1038/s41467-020-14482-y
+    pmid: "32034137"
+    cite_title: "Determining sequencing depth in a single-cell RNA-seq experiment"
+    year: 2020
+    verified: true
+    track: T4
+    review: 04-screen-design#sequencing-depth-allocation
+    tags: [depth, budget, design]
+
+  - id: replicate-wells
+    name: Independent replicate wells or cultures per condition
+    kind: design
+    layer: core
+    categories: [screen-design, batch-and-plate-effects, low-cell-stats]
+    side: additive
+    tier: standard
+    summary: "Each condition is applied to at least two independently seeded and treated wells or cultures, so the replicate unit for statistics is the well and not the cell"
+    recovers: "true replicates for pseudobulk testing and an estimate of well-to-well variance"
+    gain: "Cells within one sample are pseudoreplicates and treating them as independent inflates type 1 error (Zimmerman 2021, see also [[squair-2021]]); sci-Plex duplicate wells on randomised plates agreed at pseudobulk r = 0.99; sci-Plex-GxE used two independent transductions per condition"
+    gain_source: independent
+    requires: [replicates]
+    caveats: "Doubles wells per condition; in pooled designs (MIX-Seq, Tahoe-100M) lines in one well share that well and are not replicates of the treatment; replicate plates confound plate with replicate unless layouts are randomised"
+    verified: false
+    papers: ["doi:10.1038/s41467-021-21038-1", "doi:10.1126/science.aax6234", "doi:10.1016/j.xgen.2023.100487"]
+    track: T4
+    review: 04-screen-design#replicate-wells
+    tags: [replicates, pseudobulk, design]
+
+  # --- Hypotheses ----------------------------------------------------------------------------------
+  - id: scattered-vehicle-controls
+    name: Scattered vehicle controls and randomised plate layout
+    kind: hypothesis
+    layer: core
+    categories: [batch-and-plate-effects, screen-design]
+    side: neutral
+    tier: hypothesis
+    summary: "Vehicle (DMSO) wells are spread across rows, columns and edges of every plate and drug positions are randomised between replicate plates, so position and plate effects can be modelled instead of being confounded with treatment"
+    recovers: "unbiased within-plate controls and the ability to separate plate position from drug effect"
+    gain: "Bulk high-throughput screening, not single-cell: with active-drug plates above about 20% hit rate, normalisation using edge-placed controls failed while scattered controls plus Loess reduced row, column and edge effects (Mpindi 2015, simulated 384-well plates); not yet measured for single-cell transcriptomic readouts"
+    gain_source: independent
+    requires: [multiple-conditions, replicates]
+    caveats: "Transfer from viability screens to scRNA-seq is assumed; sci-Plex randomised positions between replicate plates and Tahoe-100M placed control-media wells at fixed positions H11 and H12, and neither reported a position-effect analysis; how many DMSO wells per plate are enough is untested"
+    verified: false
+    papers: ["doi:10.1093/bioinformatics/btv455"]
+    track: T4
+    review: 04-screen-design#scattered-vehicle-controls
+    tags: [plate-layout, controls, dmso, randomisation]
+
+  - id: count-then-balance-input
+    name: Count cells per well, then balance input
+    kind: hypothesis
+    layer: core
+    categories: [screen-design, low-cell-stats]
+    side: additive
+    tier: hypothesis
+    summary: "Record the number of cells or nuclei in each treated well before pooling, then pool similar numbers per well, so viability is kept as a phenotype while every condition gets comparable cell counts"
+    recovers: "cells per condition in cytotoxic wells, and the viability readout that equal-input pooling would otherwise erase"
+    gain: "No direct test; sci-Plex used hash-based nucleus counts per well as a viability measure, Tahoe-100M put roughly equal cell numbers per sample into barcoding, and scPerturb found that unequal cells per condition bias E-distance"
+    gain_source: none
+    requires: [tag-counts, doses-or-time]
+    caveats: "Equal input cannot add cells to wells that died, so highly cytotoxic doses still need more seeding or pooled replicate wells; counting adds a step, and losses before counting may differ by treatment"
+    verified: false
+    papers: ["doi:10.1126/science.aax6234", "doi:10.1101/2025.02.20.639398", "doi:10.1038/s41592-023-02144-y"]
+    track: T4
+    review: 04-screen-design#count-then-balance-input
+    tags: [viability, input-normalisation, drug-screen]

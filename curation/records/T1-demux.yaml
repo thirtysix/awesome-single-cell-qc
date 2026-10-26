@@ -1,0 +1,640 @@
+# Track T1: recovering cells at demultiplexing (hashing, genotype, hybrids, label recovery).
+# Hand-written records; see curation/schema.yaml and docs/review/01-demux-recovery.md.
+# Benchmarks that justify each tier are linked through `benchmarks:` (ids in
+# curation/benchmarks.yaml) and named in `gain` or `caveats`.
+
+records:
+
+  # ---------------------------------------------------------------- hashing callers ------------
+
+  - id: htodemux
+    name: HTODemux (Seurat)
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: standard
+    summary: "Seurat function that CLR-normalises hashtag counts, clusters droplets with k-medoids, fits a negative binomial to each tag's lowest cluster and calls the tag positive above that background's 0.99 quantile"
+    recovers: "sample labels for hashed cells; flags cross-sample doublets and tagless negatives"
+    gain: "Lowering positive.quantile from 0.99 to 0.9 raised overall classification accuracy from 0.54 to 0.65 on antibody-hashed nuclei of four cell lines (Mylka 2022); mean F 0.892, 0.794 and 0.742 on three BAL batches against vireo genotype truth, with under 20% of genetic doublets called singlets (Howitt 2023)"
+    gain_source: independent
+    requires: [tag-counts, filtered-matrix]
+    caveats: "The vignette's per-tag CLR ignores per-cell tag depth, which Sayed 2025 found costs negatives; recall fell to 52% in a 30-sample imbalanced simulation and it errored on low-cell PDX batches (both reported by deMULTIplex2 authors)"
+    url: https://satijalab.org/seurat/articles/hashing_vignette
+    repo: satijalab/seurat
+    language: R
+    doi: 10.1186/s13059-018-1603-1
+    pmid: "30567574"
+    cite_title: "Cell Hashing with barcoded antibodies enables multiplexing and doublet detection for single cell genomics."
+    year: 2018
+    verified: true
+    benchmarks: [howitt-2023-hto-benchmark, mylka-2022-hashing-comparison, sayed-2025-hashtag-benchmark, curion-2024-hadge-comparison, brown-2024-multiplexing-reagents]
+    track: T1
+    review: 01-demux-recovery#htodemux
+    tags: [hashing, antibody, seurat, default]
+
+  - id: multiseqdemux
+    name: MULTIseqDemux / deMULTIplex
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: benchmarked
+    summary: "Classifier released with MULTI-seq (deMULTIplex R package, ported to Seurat as MULTIseqDemux) that sets each tag's threshold between kernel-density peaks by a quantile sweep that maximises singlets, iterating after removing negatives"
+    recovers: "sample labels for lipid- or antibody-tagged cells and nuclei"
+    gain: "Preferred caller in Mylka 2022 (freemuxlet truth): overall classification accuracy 0.96 on antibody-hashed cell lines and 0.84 versus 0.74 for HTODemux on cholesterol-oligo-hashed nuclei; with demuxEM, the closest match to vireo donors on hashed brain nuclei in hadge 2024"
+    gain_source: independent
+    requires: [tag-counts]
+    caveats: "Assumes bimodal tag counts: deMULTIplex scored mean F 0.218 on a poorly hashed ovarian tumour batch (Howitt 2023) and missed whole PDX samples that its successor recovered (deMULTIplex2 authors); per-cell CLR before the sweep recovered ~56% of false negatives in Sayed 2025"
+    url: https://github.com/chris-mcginnis-ucsf/MULTI-seq
+    repo: chris-mcginnis-ucsf/MULTI-seq
+    language: R
+    doi: 10.1038/s41592-019-0433-8
+    pmid: "31209384"
+    cite_title: "MULTI-seq: sample multiplexing for single-cell RNA sequencing using lipid-tagged indices."
+    year: 2019
+    verified: true
+    papers: ["pmid:35172874", "pmid:38671451"]
+    benchmarks: [howitt-2023-hto-benchmark, mylka-2022-hashing-comparison, sayed-2025-hashtag-benchmark, curion-2024-hadge-comparison]
+    track: T1
+    review: 01-demux-recovery#multiseqdemux
+    tags: [hashing, lipid, seurat]
+
+  - id: hashsolo
+    name: HashSolo
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: standard
+    summary: "Bayesian hashing demultiplexer in scanpy (sc.external.pp.hashsolo) that models signal and noise tag counts and scores each droplet's top tags under negative, singlet and doublet hypotheses with user priors"
+    recovers: "singlet calls with few negatives"
+    gain: "Howitt 2023 (vireo truth): mean F 0.920, 0.783 and 0.737 on three BAL batches and fewer negatives than any caller except BFFcluster, but about 30% (BAL) and 60% (cell lines) of genetic doublets were called singlets"
+    gain_source: independent
+    requires: [tag-counts]
+    caveats: "Doublet leakage makes it risky on super-loaded lanes; on hashed brain nuclei it called almost every droplet a singlet (hadge 2024); default priors (0.01, 0.8, 0.19) assume transcriptome QC has already been applied"
+    url: https://scanpy.readthedocs.io/en/stable/api/scanpy.external.pp.hashsolo.html
+    repo: calico/solo
+    language: Python
+    doi: 10.1016/j.cels.2020.05.010
+    pmid: "32592658"
+    cite_title: "Solo: Doublet Identification in Single-Cell RNA-Seq via Semi-Supervised Deep Learning."
+    year: 2020
+    verified: true
+    benchmarks: [howitt-2023-hto-benchmark, curion-2024-hadge-comparison]
+    track: T1
+    review: 01-demux-recovery#hashsolo
+    tags: [hashing, scanpy, python]
+
+  - id: hasheddrops
+    name: hashedDrops (DropletUtils)
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: standard
+    summary: "DropletUtils function that removes ambient tag levels and calls singlets and doublets from the log-fold change between a droplet's top and second tag, with MAD-based outlier thresholds"
+    recovers: "more singlets when its confidence threshold is lowered"
+    gain: "With confident.min lowered from 2 to 0.5 it had the highest mean F in 4 of 6 batches in Howitt 2023 (BAL batch 2: 0.847 versus 0.613 at the default), at the cost of roughly doubling genetic doublets called singlets (about 3 000 extra in BAL batch 3)"
+    gain_source: independent
+    requires: [tag-counts]
+    caveats: "Output hinges on hard thresholds and the default is too strict for weak hashing; on hashed brain nuclei it called 32 singlets out of 4 048 droplets (hadge 2024); no dedicated publication"
+    url: https://bioconductor.org/packages/DropletUtils
+    repo: MarioniLab/DropletUtils
+    language: R
+    doi: 10.18129/B9.bioc.DropletUtils
+    cite_title: "DropletUtils"
+    year: 2018
+    verified: true
+    benchmarks: [howitt-2023-hto-benchmark, sayed-2025-hashtag-benchmark, curion-2024-hadge-comparison]
+    track: T1
+    review: 01-demux-recovery#hasheddrops
+    tags: [hashing, bioconductor, threshold]
+
+  - id: demuxmix
+    name: demuxmix
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: benchmarked-sota
+    summary: "Bioconductor package that fits negative binomial regression mixture models to raw tag counts, optionally with each droplet's detected-gene count as a covariate, and returns a posterior error probability for every assignment"
+    recovers: "weakly tagged singlets with normal RNA; supports pooling one untagged sample with tagged ones"
+    gain: "Best overall of 7 callers in Howitt 2023 (mean F 0.907, 0.833, 0.775 on BAL; under 20% of genetic doublets called singlets). Self-reported: 94% of singlets classified versus 87-93% for other callers (brain nuclei) and 85% versus 67-81% (cell-line mixture); untagged CSF cells pooled with tagged PBMC separated at sensitivity 0.980 and specificity 0.985"
+    gain_source: independent
+    requires: [tag-counts, filtered-matrix]
+    caveats: "Weak on the poorly hashed ovarian tumour batches in Howitt 2023 (F 0.511 and 0.506) though with the fewest doublet errors; errored on all three low-cell PDX batches and reached 73% recall (naive mode) in a 30-sample imbalanced simulation (deMULTIplex2 authors); the RNA covariate gave no gain on Howitt's data"
+    url: https://bioconductor.org/packages/demuxmix
+    repo: huklein/demuxmix
+    language: R
+    doi: 10.1093/bioinformatics/btad481
+    pmid: "37527018"
+    cite_title: "demuxmix: demultiplexing oligonucleotide-barcoded single-cell RNA sequencing data with regression mixture models."
+    year: 2023
+    verified: true
+    papers: ["pmid:36747615"]
+    benchmarks: [howitt-2023-hto-benchmark, sayed-2025-hashtag-benchmark]
+    track: T1
+    review: 01-demux-recovery#demuxmix
+    tags: [hashing, probabilistic, rna-aware]
+
+  - id: demultiplex2
+    name: deMULTIplex2
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: benchmarked-sota
+    summary: "R package that models tag cross-contamination from its physical mechanism with two negative binomial GLMs (tag-count and cosine-similarity spaces) fitted by EM, giving each cell a posterior sample probability"
+    recovers: "singlets from noisy, imbalanced or low-cell samples, including samples whose tag counts are not bimodal"
+    gain: "Self-reported: 63.2% versus 50.8% of all cells correctly retrieved (deMULTIplex) on multiplexed breast-cancer PDX, including two samples other callers missed; over 99% recall versus 52% (HTODemux) and 73% (demuxmix naive) in a 30-sample imbalanced simulation; accuracy held with about 10 cells per sample and with 5% of tag reads (median 30 tags per cell) on clean data"
+    gain_source: self-reported
+    requires: [tag-counts]
+    caveats: "Tier rests on Sayed 2025: highest average F over 12 real datasets among the established standalone callers, behind only that study's own clustering workflows (F 0.87 versus 0.9 on its most depth-variable dataset). Competitor comparisons: tied best with CMDdemux on poorly hashed ovarian tumours (79% versus 81% concordance with vireo, CMDdemux paper), but failed on an over-labelled CellPlex PDX dataset (CMDdemux paper); cell-type bias in tag capture is reduced, not removed"
+    url: https://github.com/Gartner-Lab/deMULTIplex2
+    repo: Gartner-Lab/deMULTIplex2
+    language: R
+    doi: 10.1186/s13059-024-03177-y
+    pmid: "38291503"
+    cite_title: "deMULTIplex2: robust sample demultiplexing for scRNA-seq."
+    year: 2024
+    verified: true
+    papers: ["pmid:37090649", "pmid:42033230"]
+    benchmarks: [sayed-2025-hashtag-benchmark]
+    track: T1
+    review: 01-demux-recovery#demultiplex2
+    tags: [hashing, lipid, antibody, imbalance, high-plex]
+
+  - id: cellhashr
+    name: cellhashR (BFF_raw, BFF_cluster, consensus)
+    kind: tool
+    layer: core
+    categories: [demux-hashing]
+    side: both
+    tier: benchmarked
+    summary: "R package that runs several hashing callers, including its own bimodal flexible fitting (BFF_raw, BFF_cluster), with tag QC plots and a consensus call across callers"
+    recovers: "singlets agreed by several callers, a hedge when no single caller is trusted"
+    gain: "Self-reported: BFF accurate and consistent on two reference datasets; no independent test of the consensus mode found"
+    gain_source: self-reported
+    requires: [tag-counts]
+    caveats: "BFF assumes bimodal counts: in Howitt 2023 BFFcluster fell to mean F 0.119 and 0.188 on the weaker BAL batches, called no cells in one ovarian batch, and called over half (BAL) to over 75% (cell lines) of genetic doublets singlets; both BFF modes missed a whole sample in HTOreader's 8-donor pool. BFF also failed on hadge's brain nuclei and both modes ranked among the lowest workflows in Sayed 2025; its one independent win was BFF cluster on Brown 2024's low signal-to-noise CellPlex set, with four-fold more false positives on that study's high-quality MULTI-seq set. The consensus mode was not benchmarked"
+    url: https://github.com/BimberLab/cellhashR
+    repo: BimberLab/cellhashR
+    language: R
+    doi: 10.1093/bioinformatics/btac213
+    pmid: "35561167"
+    cite_title: "BFF and cellhashR: analysis tools for accurate demultiplexing of cell hashing data."
+    year: 2022
+    verified: true
+    benchmarks: [howitt-2023-hto-benchmark, sayed-2025-hashtag-benchmark, curion-2024-hadge-comparison, brown-2024-multiplexing-reagents]
+    track: T1
+    review: 01-demux-recovery#cellhashr
+    tags: [hashing, consensus, wrapper]
+
+  - id: gmm-demux
+    name: GMM-Demux
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: benchmarked-sota
+    summary: "Command-line tool that fits a two-component Gaussian mixture to each CLR-normalised tag and models droplet formation to estimate multiplet rates and flag multiplet-induced (phony) clusters"
+    recovers: "singlet calls with confidence scores; an estimate of undetectable same-sample multiplets for planning"
+    gain: "Howitt 2023: mean F 0.905, 0.770, 0.720 (BAL) and 0.823 (cell lines), under 20% of genetic doublets called singlets, judged close to demuxmix and HTODemux. Self-reported: PBMC multiplet rate cut from 23.9% to 6.45%, then 3.29% after removing 9 phony clusters"
+    gain_source: independent
+    requires: [tag-counts]
+    caveats: "Bimodality assumption: failed to recover many samples in a 30-sample imbalanced simulation and errored on low-cell PDX batches (deMULTIplex2 authors); over-assigned doublets on a high-background CMO dataset (CMDdemux authors)"
+    url: https://github.com/CHPGenetics/GMM-demux
+    repo: CHPGenetics/GMM-demux
+    language: Python
+    doi: 10.1186/s13059-020-02084-2
+    pmid: "32731885"
+    cite_title: "GMM-Demux: sample demultiplexing, multiplet detection, experiment planning, and novel cell-type verification in single cell sequencing."
+    year: 2020
+    verified: true
+    benchmarks: [howitt-2023-hto-benchmark, mylka-2022-hashing-comparison, sayed-2025-hashtag-benchmark, curion-2024-hadge-comparison]
+    track: T1
+    review: 01-demux-recovery#gmm-demux
+    tags: [hashing, multiplet-rate, planning]
+
+  - id: demuxem
+    name: demuxEM
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: benchmarked-sota
+    summary: "Hashing demultiplexer built for nucleus hashing that estimates each tag's background from empty droplets and uses EM to split a droplet's tag counts into background and true signal before calling"
+    recovers: "singlets from noisy nucleus hashing"
+    gain: "Self-reported on hashed brain nuclei: 96% agreement with demuxlet versus 92% for Seurat, 94.8% agreement with Xist-based sex. In hadge 2024 it matched vireo donors best together with MULTI-seq on hashed brain nuclei (one dataset)"
+    gain_source: self-reported
+    requires: [tag-counts, raw-matrix]
+    caveats: "Needs the unfiltered matrix to model background; errored on a MULTI-seq PBMC dataset (deMULTIplex2 authors) and gave no result on a CellPlex PDX dataset (CMDdemux authors); not in Howitt 2023; its only independent win is a single nuclei dataset"
+    url: https://github.com/lilab-bcb/demuxEM
+    repo: lilab-bcb/demuxEM
+    language: Python
+    doi: 10.1038/s41467-019-10756-2
+    pmid: "31266958"
+    cite_title: "Nuclei multiplexing with barcoded antibodies for single-nucleus genomics."
+    year: 2019
+    verified: true
+    benchmarks: [curion-2024-hadge-comparison]
+    track: T1
+    review: 01-demux-recovery#demuxem
+    tags: [hashing, nuclei, empty-droplets]
+
+  # ---------------------------------------------------------------- genotype callers -----------
+
+  - id: souporcell
+    name: souporcell
+    kind: tool
+    layer: core
+    categories: [demux-genotype, doublets, ambient-rna]
+    side: both
+    tier: benchmarked-sota
+    summary: "Genotype-free demultiplexer that calls variants from the pooled reads, clusters cells by allele counts with an explicit ambient-RNA term, and flags cross-genotype doublets"
+    recovers: "donor or cell-line labels for every cell with enough variant reads, independent of tags; an ambient RNA estimate"
+    gain: "Independent (Demuxafy): with vireo, unaffected by simulated ambient RNA in pools of up to 16 donors, but performance drops above 32 donors. Self-reported: 6 612 of 6 622 singlets and 415 of 451 doublets correct in a synthetic mixture; a minority sample resolved down to 0.6% of cells"
+    gain_source: independent
+    requires: [bam, genotypes]
+    caveats: "Produced wrong genotype clusters at high true-doublet rates (HTOreader's 9-donor pool; a renal cancer dataset at 16-24% doublets in demuxSNP); the number of genotypes must be given; Fu 2025 rated it jointly best overall with vireo, though vireo was more accurate and faster, and hadge 2024 placed it in the consistent top group with vireo, demuxlet and freemuxlet; Souporcell3 (2026) targets up to 64 donors"
+    url: https://github.com/wheaton5/souporcell
+    repo: wheaton5/souporcell
+    language: multiple
+    doi: 10.1038/s41592-020-0820-1
+    pmid: "32366989"
+    cite_title: "Souporcell: robust clustering of single-cell RNA-seq data by genotype without reference genotypes."
+    year: 2020
+    verified: true
+    papers: ["pmid:41808435"]
+    benchmarks: [fu-2025-snrna-genetic-benchmark, neavin-2024-demuxafy-benchmark, curion-2024-hadge-comparison, fiorini-2025-ensemblex-benchmark]
+    track: T1
+    review: 01-demux-recovery#souporcell
+    tags: [genotype, reference-free, cell-lines, ambient]
+
+  - id: vireo
+    name: vireo (with cellSNP-lite)
+    kind: tool
+    layer: core
+    categories: [demux-genotype, doublets]
+    side: both
+    tier: benchmarked-sota
+    summary: "Bayesian variational model that assigns cells to donors from allele counts (cellSNP-lite pileups) with full, partial or no reference genotypes and calls between-donor doublets"
+    recovers: "donor or cell-line labels independent of tags; doublets between genotypes"
+    gain: "Most accurate and fastest of vireo, souporcell, freemuxlet and scSplit on simulated snRNA-seq pools (Fu 2025); best single method without reference genotypes at 16 or more donors (Demuxafy); on pooled tumours, 99.0-99.9% singlet recall with bulk RNA-seq genotypes and 99.2% of its doublet calls true versus 31.9% for demuxlet (Weber 2021)"
+    gain_source: independent
+    requires: [bam, genotypes]
+    caveats: "Precision falls with doublets (100%, 85.9%, 77.4% at 0, 20, 30% doublets in Weber 2021); clustering can stall in local optima above ~16 donors (Souporcell3 authors); variant-caller pairing matters (60% recall for one cellSNP setting in Fu 2025)"
+    url: https://vireosnp.readthedocs.io
+    repo: single-cell-genetics/vireo
+    language: Python
+    doi: 10.1186/s13059-019-1865-2
+    pmid: "31836005"
+    cite_title: "Vireo: Bayesian demultiplexing of pooled single-cell RNA-seq data without genotype reference."
+    year: 2019
+    verified: true
+    benchmarks: [fu-2025-snrna-genetic-benchmark, weber-2021-cancer-genetic-demux, neavin-2024-demuxafy-benchmark, curion-2024-hadge-comparison, fiorini-2025-ensemblex-benchmark]
+    track: T1
+    review: 01-demux-recovery#vireo
+    tags: [genotype, reference-free, cancer, cell-lines]
+
+  - id: demuxlet
+    name: demuxlet / freemuxlet (popscle)
+    kind: tool
+    layer: core
+    categories: [demux-genotype, doublets]
+    side: both
+    tier: standard
+    summary: "Reference-genotype demultiplexer (popscle suite, with freemuxlet as its genotype-free mode) that scores each droplet's SNP reads against every donor and donor pair"
+    recovers: "donor labels and between-donor doublets from SNP reads"
+    gain: "Self-reported: in simulation 50 SNPs per cell assigned 97% of singlets and detected 92% of doublets in pools of up to 64; with genotypes for 8 pooled samples over 99% of singlets were assigned correctly"
+    gain_source: self-reported
+    requires: [bam, genotypes]
+    caveats: "Default doublet threshold gave nearly 40% false-positive doublets in a synthetic test (souporcell authors); in pooled tumours only 31.9% of its doublet calls were true (Weber 2021); high memory use (Demuxafy); needs a VCF of the pooled donors"
+    url: https://github.com/statgen/popscle
+    repo: statgen/popscle
+    language: C++
+    doi: 10.1038/nbt.4042
+    pmid: "29227470"
+    cite_title: "Multiplexed droplet single-cell RNA-sequencing using natural genetic variation."
+    year: 2018
+    verified: true
+    benchmarks: [fu-2025-snrna-genetic-benchmark, weber-2021-cancer-genetic-demux, neavin-2024-demuxafy-benchmark, curion-2024-hadge-comparison, fiorini-2025-ensemblex-benchmark]
+    track: T1
+    review: 01-demux-recovery#demuxlet
+    tags: [genotype, reference-genotypes]
+
+  - id: demuxalot
+    name: Demuxalot
+    kind: tool
+    layer: core
+    categories: [demux-genotype, doublets]
+    side: both
+    tier: benchmarked-sota
+    summary: "Reference-genotype demultiplexer that refines donor genotypes from the pooled reads before assigning cells, built for large pools"
+    recovers: "donor labels with the lowest error among genotype tools in Demuxafy"
+    gain: "Independent (Demuxafy): Demuxalot (refined) had the fewest wrong droplets, about 1% at 2 donors and 3% at 16 or more, and the best detection of between-donor doublets; combined with Dropulation it raised MCC by about 0.09 over single methods"
+    gain_source: independent
+    requires: [bam, genotypes]
+    caveats: "Preprint only; needs reference genotypes; high memory use (Demuxafy)"
+    url: https://github.com/arogozhnikov/demuxalot
+    repo: arogozhnikov/demuxalot
+    language: Python
+    doi: 10.1101/2021.05.22.443646
+    cite_title: "Demuxalot: scaled up genetic demultiplexing for single-cell sequencing"
+    year: 2021
+    verified: true
+    benchmarks: [neavin-2024-demuxafy-benchmark, fiorini-2025-ensemblex-benchmark]
+    track: T1
+    review: 01-demux-recovery#demuxalot
+    tags: [genotype, reference-genotypes, preprint]
+
+  - id: demuxafy
+    name: Demuxafy
+    kind: tool
+    layer: core
+    categories: [demux-genotype, doublets, qc-benchmarks]
+    side: both
+    tier: published-unbenchmarked
+    summary: "Containerised framework that runs 7 genotype demultiplexers and 7 transcriptional doublet detectors, combines them by intersection, and recommends combinations by pool design"
+    recovers: "more correctly classified singlets and doublets than any single method"
+    gain: "Self-reported on 74 PBMC pools (12-16 donors, ~20 000 droplets), fibroblast pools and 70 in silico pools of 2-128 donors: recommended combinations raised MCC by about 0.09 over single methods (FDR < 0.05); demultiplexing alone leaves 173 (16 donors) to 1 325 (2 donors) same-donor, different-cell-type doublets per 20 000-droplet capture"
+    gain_source: self-reported
+    requires: [bam, genotypes, filtered-matrix]
+    caveats: "Built and tested on donor pools, not on hashing; intersections favour purity, so check singlet yield; with 16 or more donors and no reference genotypes vireo alone was best"
+    url: https://demultiplexing-doublet-detecting-docs.readthedocs.io
+    repo: drneavin/Demultiplexing_Doublet_Detecting_Docs
+    language: multiple
+    doi: 10.1186/s13059-024-03224-8
+    pmid: "38622708"
+    cite_title: "Demuxafy: improvement in droplet assignment by integrating multiple single-cell demultiplexing and doublet detection methods."
+    year: 2024
+    verified: true
+    track: T1
+    review: 01-demux-recovery#demuxafy
+    tags: [genotype, ensemble, doublets]
+
+  # ---------------------------------------------------------------- hashing + genotype hybrids --
+
+  - id: htoreader-hybrid
+    name: HTOreader and hybrid hashing-genotype demultiplexing
+    kind: tool
+    layer: core
+    categories: [demux-hashing, demux-genotype, discarded-data]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Hashing caller whose cut-offs resist many tags and unequal sample sizes, plus a hybrid strategy that names souporcell genotype clusters by their dominant hashtag and labels every cell that either method calls a singlet"
+    recovers: "hashing negatives and false hashing doublets in genetically distinct pools; one unhashed sample, or unstained aliquots of hashed donors"
+    gain: "Self-reported, 8-donor B and T cell pool: the hybrid added 5.2% singlets, mostly cells hashing had called doublets (715) or negatives (166); 88.03% of cells (13 777 of 15 650) assigned across a hashed and an unhashed pool sharing donors; about 100 hashtagged cells per donor sufficed to name clusters"
+    gain_source: self-reported
+    requires: [tag-counts, bam, genotypes]
+    caveats: "Needs genetically distinct samples, so it cannot split conditions applied to one cell line; inherits souporcell's errors at high doublet rates"
+    url: https://github.com/WilsonImmunologyLab/HTOreader
+    repo: WilsonImmunologyLab/HTOreader
+    language: R
+    doi: 10.1093/bib/bbae254
+    pmid: "38828640"
+    cite_title: "A hybrid demultiplexing strategy that improves performance and robustness of cell hashing."
+    year: 2024
+    verified: true
+    papers: ["pmid:37066221"]
+    track: T1
+    review: 01-demux-recovery#htoreader-hybrid
+    tags: [hashing, genotype, hybrid, rescue]
+
+  - id: demuxsnp
+    name: demuxSNP
+    kind: tool
+    layer: core
+    categories: [demux-hashing, demux-genotype, discarded-data]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Bioconductor package that trains a nearest-neighbour classifier (Jaccard distance on SNP profiles) on confident hashing singlets and simulated doublets, then reassigns negative, uncertain and doublet cells"
+    recovers: "hashing negatives and uncertain cells with good RNA when samples differ genetically"
+    gain: "Self-reported: beat hashing-only callers on a low-quality hashing benchmark and recovered more high-RNA-quality cells; in a renal cancer dataset HTODemux had left 2 582 cells (over 10%) negative; more robust than genotype-free and hybrid methods under class imbalance at 5-50% doublets"
+    gain_source: self-reported
+    requires: [tag-counts, bam, genotypes]
+    caveats: "Needs genetically distinct samples and enough confident singlets per group; SNP coverage limits low-RNA cells"
+    url: https://bioconductor.org/packages/demuxSNP
+    repo: michaelplynch/demuxSNP
+    language: R
+    doi: 10.1093/gigascience/giae090
+    pmid: "39607981"
+    cite_title: "demuxSNP: supervised demultiplexing single-cell RNA sequencing using cell hashing and SNPs."
+    year: 2024
+    verified: true
+    track: T1
+    review: 01-demux-recovery#demuxsnp
+    tags: [hashing, genotype, hybrid, supervised, rescue]
+
+  - id: hadge
+    name: hadge (nf-core/hadge)
+    kind: tool
+    layer: core
+    categories: [demux-hashing, demux-genotype, discarded-data]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Nextflow pipeline running 7 hashing and 5 genotype demultiplexers, scoring their agreement, with a rescue mode that labels genotype clusters by their matched hashtags"
+    recovers: "hashing negatives and whole weakly tagged samples when donors differ genetically"
+    gain: "Self-reported on hashed multiple sclerosis brain nuclei: rescue mode called 90% of droplets singlets and rescued 89.7% of hashing negatives, doubling singlets for the weakest hashtags; after the original study's QC, 3 208 cells were kept, 952 of them previously excluded"
+    gain_source: self-reported
+    requires: [tag-counts, bam, genotypes]
+    caveats: "Two neuronal clusters were mostly or wholly rescued cells, so hashing loss was cell-type biased and rescue changes composition; needs genetically distinct donors"
+    url: https://nf-co.re/hadge
+    repo: nf-core/hadge
+    language: multiple
+    doi: 10.1186/s13059-024-03249-z
+    pmid: "38671451"
+    cite_title: "hadge: a comprehensive pipeline for donor deconvolution in single-cell studies."
+    year: 2024
+    verified: true
+    track: T1
+    review: 01-demux-recovery#hadge
+    tags: [hashing, genotype, pipeline, nextflow, rescue, nuclei]
+
+  - id: cmddemux
+    name: CMDdemux
+    kind: tool
+    layer: core
+    categories: [demux-hashing, doublets]
+    side: both
+    tier: published-unbenchmarked
+    summary: "Demultiplexer that CLR-normalises tags within each cell, clusters with K-medoids and classifies by Mahalanobis distance using hashtag and mRNA data, with plots for checking doubtful droplets"
+    recovers: "singlets on low-quality or over-labelled hashing data"
+    gain: "Self-reported: 81% concordance with vireo versus 79% for deMULTIplex2 on poorly hashed ovarian tumours, both ahead of other callers; on an over-labelled CellPlex PDX dataset recovered CMO301 singlets that HTODemux and demuxmix under-called while deMULTIplex2 and BFF failed"
+    gain_source: self-reported
+    requires: [tag-counts, filtered-matrix]
+    caveats: "New (2026); no independent benchmark yet"
+    url: https://github.com/jiananwehi/CMDdemux
+    repo: jiananwehi/CMDdemux
+    language: R
+    doi: 10.1093/nar/gkag360
+    pmid: "42033230"
+    cite_title: "CMDdemux: an efficient single cell demultiplexing method."
+    year: 2026
+    verified: true
+    track: T1
+    review: 01-demux-recovery#cmddemux
+    tags: [hashing, cmo, rna-aware]
+
+  # ---------------------------------------------------------------- evidence -------------------
+
+  - id: howitt-2023-hto-benchmark
+    name: Howitt et al. 2023 hashtag demultiplexing benchmark
+    kind: evidence
+    layer: core
+    categories: [qc-benchmarks, demux-hashing]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Independent benchmark of 7 hashtag callers against vireo genotype assignments in 6 tagging experiments (24 BAL donors, 8 ovarian tumours, 3 lung cancer cell lines; antibody and lipid tags)"
+    recovers: "shows how many cells caller choice gains or loses when hashing is weak"
+    gain: "Genotype calls kept 81-91% of droplets as singlets, more than any hashtag caller; mean F ranged from 0 to 0.935 across callers and batches; demuxmix best overall, HTODemux and GMM-Demux close; hashing quality and RNA quality were largely uncorrelated"
+    gain_source: independent
+    requires: [tag-counts, genotypes]
+    caveats: "vireo is the truth, so genetic doublets and negatives are themselves imperfect; at most 8 tags per pool; deMULTIplex2 and demuxEM not included"
+    url: https://doi.org/10.1093/nargab/lqad086
+    doi: 10.1093/nargab/lqad086
+    pmid: "37829177"
+    cite_title: "Benchmarking single-cell hashtag oligo demultiplexing methods."
+    year: 2023
+    verified: true
+    track: T1
+    review: 01-demux-recovery#howitt-2023-hto-benchmark
+    tags: [benchmark, hashing, genotype-truth]
+
+  - id: mylka-2022-hashing-comparison
+    name: Mylka et al. 2022 antibody versus lipid hashing comparison
+    kind: evidence
+    layer: core
+    categories: [qc-benchmarks, demux-hashing, screen-design]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Comparison of antibody (TotalSeq-A, -B, -C), lipid (MULTI-seq, custom LMO, cholesterol CMO) and CellPlex hashing on cell lines, nuclei, PBMC and mouse tissues, scored against freemuxlet genotypes"
+    recovers: "tells which tag chemistry loses fewest cells for a sample type"
+    gain: "Overall classification accuracy 0.96 for antibody-hashed cell lines versus 0.68-0.84 for lipids (negatives 1.1-1.8% versus 7-21%); capturing 48% more cells raised doublets by 125% and unassigned barcodes by 325%; nuclei: cholesterol-oligo 0.84 versus antibody 0.51; brain cells: lipid 0.85-0.87 versus antibody 0.38; PBMC pre-sort labelling: TotalSeq-B 0.96, CellPlex 0.93"
+    gain_source: independent
+    requires: [tag-counts, genotypes]
+    caveats: "Cell-line results may not transfer to fragile or treated cells; dying high-mito PBMC clusters hashed worse; hashtag swapping ranged from ~0.1% (antibody) to 2.68% (custom LMO); one lab, four cell lines and few tissues; accuracy depends on the caller's parameters (HTODemux positive.quantile 0.99 to 0.9 raised antibody-nuclei OCA from 0.54 to 0.65); the freemuxlet reference itself misses some doublets"
+    url: https://doi.org/10.1186/s13059-022-02628-8
+    doi: 10.1186/s13059-022-02628-8
+    pmid: "35172874"
+    cite_title: "Comparative analysis of antibody- and lipid-based multiplexing methods for single-cell RNA-seq."
+    year: 2022
+    verified: true
+    track: T1
+    review: 01-demux-recovery#mylka-2022-hashing-comparison
+    tags: [benchmark, hashing, lipid, antibody, nuclei, cellplex]
+
+  - id: sayed-2025-hashtag-benchmark
+    name: Sayed et al. 2025 normalisation x caller benchmark (hashDemux)
+    kind: evidence
+    layer: core
+    categories: [qc-benchmarks, demux-hashing]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Benchmark of tag normalisations crossed with hashing callers on 12 real and simulated datasets, introducing hashDemux (per-cell CLR followed by clustering)"
+    recovers: "cells called negative only because their tag library was shallow"
+    gain: "Per-cell (sequencing-depth) CLR instead of per-tag CLR recovered ~97% (clustering) and ~56% (MULTI-seq workflow) of cells wrongly called negative for the most variable tag; best workflows F 0.9 versus 0.87 for deMULTIplex2 on that dataset; clustering with per-cell CLR had the highest average F over 12 datasets"
+    gain_source: self-reported
+    requires: [tag-counts]
+    caveats: "At most 12 tags per dataset, mostly cell lines; the clustering workflow calls doublets poorly, so RNA-based doublet filtering is advised afterwards"
+    url: https://github.com/hwlim/hashDemux
+    repo: hwlim/hashDemux
+    language: R
+    doi: 10.1093/bfgp/elae039
+    pmid: "39387404"
+    cite_title: "Systematic benchmark of single-cell hashtag demultiplexing approaches reveals robust performance of a clustering-based method."
+    year: 2025
+    verified: true
+    track: T1
+    review: 01-demux-recovery#sayed-2025-hashtag-benchmark
+    tags: [benchmark, hashing, normalisation]
+
+  - id: fu-2025-snrna-genetic-benchmark
+    name: Fu et al. 2025 genetic demultiplexing benchmark for snRNA-seq
+    kind: evidence
+    layer: core
+    categories: [qc-benchmarks, demux-genotype]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Benchmark of vireo, souporcell, freemuxlet and scSplit with three variant callers on simulated snRNA-seq pools of 2-6 samples at 0-30% doublets, checked against sex-linked genes"
+    gain: "All tools except scSplit reached 80-85% accuracy with high recall and precision; vireo was most accurate and fastest; scSplit recall was under 50%; accuracy fell as doublets rose"
+    gain_source: independent
+    requires: [bam, genotypes]
+    caveats: "Simulated pools of few samples; results depend on the variant caller paired with each tool"
+    url: https://doi.org/10.1093/bib/bbaf371
+    doi: 10.1093/bib/bbaf371
+    pmid: "40702707"
+    cite_title: "Benchmarking of computational demultiplexing methods for single-nucleus RNA sequencing data."
+    year: 2025
+    verified: true
+    track: T1
+    review: 01-demux-recovery#fu-2025-snrna-genetic-benchmark
+    tags: [benchmark, genotype, nuclei]
+
+  - id: weber-2021-cancer-genetic-demux
+    name: Weber et al. 2021 genetic demultiplexing in cancer
+    kind: evidence
+    layer: core
+    categories: [qc-benchmarks, demux-genotype, screen-design]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "In silico benchmark of genetic demultiplexing on pooled tumour scRNA-seq (high copy-number ovarian cancer, high mutation-burden lung adenocarcinoma) with a reusable Snakemake workflow"
+    gain: "cellSNP/vireo with bulk RNA-seq genotypes recalled 99.0-99.9% of singlets (precision 100%, 85.9%, 77.4% at 0, 20, 30% doublets); 1000 Genomes reference recall 97.9-99.0%; 99.2% of vireo doublet calls were true versus 31.9% for demuxlet"
+    gain_source: independent
+    requires: [bam, genotypes]
+    caveats: "In silico pools; ambient RNA from debris lowered performance; souporcell, scSplit and freemuxlet not tested; scDblFinder performed poorly on the remaining doublets"
+    url: https://github.com/lmweber/snp-dmx-cancer
+    repo: lmweber/snp-dmx-cancer
+    doi: 10.1093/gigascience/giab062
+    pmid: "34553212"
+    cite_title: "Genetic demultiplexing of pooled single-cell RNA-sequencing samples in cancer facilitates effective experimental design."
+    year: 2021
+    verified: true
+    track: T1
+    review: 01-demux-recovery#weber-2021-cancer-genetic-demux
+    tags: [benchmark, genotype, cancer]
+
+  # ---------------------------------------------------------------- methods and hypotheses -----
+
+  - id: tag-guided-cell-rescue
+    name: Tag-guided rescue of low-RNA cells
+    kind: method
+    layer: core
+    categories: [demux-hashing, cell-calling, discarded-data]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Using a confident sample tag as independent evidence that a barcode holds a cell, to keep low-RNA barcodes that RNA-only cell calling or UMI floors would discard"
+    recovers: "cells with little RNA (neutrophils, small or stressed cells) below the usual UMI cut-off"
+    gain: "Self-reported in MULTI-seq: in cryopreserved PDX samples, 90.8% of sequenced neutrophils were below the CellRanger UMI inflection (1 350) and were kept because their barcodes classified; low-RNA barcodes that did not classify looked like broken cells"
+    gain_source: self-reported
+    requires: [tag-counts, raw-matrix]
+    caveats: "Free or ambient tags can make debris droplets look tagged, so a tag floor plus RNA checks are still needed; hashing negatives had ~2x fewer UMIs than singlets (Mylka 2022), so tag and RNA failure partly co-occur; no independent benchmark"
+    doi: 10.1038/s41592-019-0433-8
+    pmid: "31209384"
+    cite_title: "MULTI-seq: sample multiplexing for single-cell RNA sequencing using lipid-tagged indices."
+    year: 2019
+    verified: true
+    papers: ["pmid:35172874"]
+    track: T1
+    review: 01-demux-recovery#tag-guided-cell-rescue
+    tags: [hashing, low-rna, cell-calling, rescue]
+
+  - id: expression-label-recovery
+    name: Expression-based label recovery for untagged cells
+    kind: hypothesis
+    layer: core
+    categories: [discarded-data, demux-hashing, low-cell-stats]
+    side: additive
+    tier: hypothesis
+    summary: "Assigning hashing negatives to a sample with a classifier trained on confidently tagged cells' transcriptomes; sound when the label is a fixed identity (cell line, donor), circular when the label is the treatment whose effect is being measured"
+    recovers: "negatives and uncertain cells when no genotype difference separates the samples"
+    gain: "Identity labels only: MIX-Seq expression-based and SNP-based cell-line calls agreed over 99% (McFarland 2020); expression-aware demultiplexing reached mean accuracy 0.98 combined with genetics and added 1.4% on top of barcoding (Nassiri 2024). Treatment labels: no validated gain found"
+    gain_source: self-reported
+    requires: [tag-counts, filtered-matrix, multiple-conditions]
+    caveats: "Cells assigned to a drug because they look treated inflate effect sizes and hide non-responders; keep such cells out of any comparison between the conditions the classifier separates, or use them only for condition-independent questions"
+    verified: false
+    papers: ["pmid:32855387", "pmid:38911824"]
+    track: T1
+    review: 01-demux-recovery#expression-label-recovery
+    tags: [label-transfer, circularity, drug-screen]

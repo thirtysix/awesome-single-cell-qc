@@ -1,0 +1,147 @@
+# Test fixture: six schema-valid records. The tests and `make curate FIXTURES=1`
+# build from this file instead of curation/records/, so they never depend on (or
+# disturb) the research tracks' real records. Identifiers and titles were checked
+# against PubMed esummary on 2026-10-21; gains are deliberately qualitative.
+records:
+  - id: emptydrops
+    name: EmptyDrops
+    kind: tool
+    layer: core
+    categories: [cell-calling]
+    side: additive
+    tier: standard
+    summary: Tests each barcode against the ambient profile to separate low-RNA cells from empty droplets
+    recovers: low-RNA cells that a knee-point UMI cutoff discards
+    gain_source: none
+    requires: [raw-matrix]
+    caveats: needs a well-populated ambient pool; the lower UMI bound is user-set
+    url: https://bioconductor.org/packages/DropletUtils
+    repo: MarioniLab/DropletUtils
+    language: R
+    doi: 10.1186/s13059-019-1662-y
+    pmid: 30902100
+    cite_title: "EmptyDrops: distinguishing cells from empty droplets in droplet-based single-cell RNA sequencing data"
+    year: 2019
+    verified: true
+    track: QC-sweep
+    review: 02-cell-calling#emptydrops
+    tags: [droplet]
+
+  - id: cellbender
+    name: CellBender
+    kind: tool
+    layer: core
+    categories: [ambient-rna, cell-calling]
+    side: both
+    tier: benchmarked-sota
+    summary: Deep generative model that removes ambient and barcode-swapping background counts and calls cells from the raw matrix
+    recovers: signal in cells kept despite heavy ambient contamination
+    gain: lowest residual background among the methods compared in a genotype-based benchmark
+    gain_source: independent
+    requires: [raw-matrix]
+    caveats: GPU recommended for large runs; can over-correct genes that dominate the ambient pool
+    url: https://cellbender.readthedocs.io
+    repo: broadinstitute/CellBender
+    language: Python
+    doi: 10.1038/s41592-023-01943-7
+    pmid: 37550580
+    cite_title: Unsupervised removal of systematic background noise from droplet-based single-cell experiments using CellBender
+    year: 2023
+    verified: true
+    benchmarks: [janssen-2023-background-noise]
+    track: QC-sweep
+    tags: [droplet, ambient]
+
+  - id: soupx
+    name: SoupX
+    kind: tool
+    layer: core
+    categories: [ambient-rna]
+    side: both
+    tier: standard
+    summary: Estimates the ambient soup profile from empty droplets and subtracts a per-cluster contamination fraction
+    requires: [raw-matrix, filtered-matrix]
+    caveats: the automatic contamination estimate depends on marker genes absent from some clusters
+    repo: constantAmateur/SoupX
+    language: R
+    doi: 10.1093/gigascience/giaa151
+    pmid: 33367645
+    cite_title: SoupX removes ambient RNA contamination from droplet-based single-cell RNA sequencing data
+    year: 2020
+    verified: true
+    benchmarks: [janssen-2023-background-noise]
+    track: QC-sweep
+    tags: [droplet, ambient]
+
+  - id: scdblfinder
+    name: scDblFinder
+    kind: tool
+    layer: core
+    categories: [doublets]
+    side: subtractive
+    tier: benchmarked-sota
+    summary: Classifies doublets with gradient-boosted trees trained on artificial doublets and cluster-aware features
+    gain: highest mean AUPRC across the datasets of its own extended benchmark
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    url: https://bioconductor.org/packages/scDblFinder
+    repo: plger/scDblFinder
+    language: R
+    doi: 10.12688/f1000research.73600.2
+    pmid: 35814628
+    cite_title: Doublet identification in single-cell sequencing data using scDblFinder
+    year: 2021
+    verified: true
+    track: QC-sweep
+    tags: [doublets]
+
+  - id: demuxmix
+    name: demuxmix
+    kind: tool
+    layer: core
+    categories: [demux-hashing]
+    side: additive
+    tier: published-unbenchmarked
+    summary: Demultiplexes hashtag counts with regression mixture models that use the number of detected genes as a covariate
+    recovers: cells that threshold-based callers leave negative or ambiguous
+    gain: more cells assigned at a matched error rate than threshold callers in its own simulations
+    gain_source: self-reported
+    requires: [tag-counts, filtered-matrix]
+    url: https://bioconductor.org/packages/demuxmix
+    repo: huklein/demuxmix
+    language: R
+    doi: 10.1093/bioinformatics/btad481
+    pmid: 37527018
+    cite_title: "demuxmix: demultiplexing oligonucleotide-barcoded single-cell RNA sequencing data with regression mixture models"
+    year: 2023
+    verified: true
+    track: T1
+    review: 01-demux-recovery#demuxmix
+    tags: [hashing]
+
+  - id: dreamlet
+    name: dreamlet
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: additive
+    tier: published-unbenchmarked
+    summary: Pseudobulk differential expression with precision weights and linear mixed models, scaled to large cohorts
+    recovers: power in pseudobulk samples built from few cells, by down-weighting rather than dropping them
+    gain_source: none
+    requires: [replicates, filtered-matrix]
+    caveats: weights assume the cell count is the main driver of pseudobulk precision
+    url: https://diseaseneurogenomics.github.io/dreamlet/
+    repo: GabrielHoffman/dreamlet
+    language: R
+    doi: 10.1038/s41467-026-75680-8
+    pmid: 42778542
+    cite_title: Efficient differential expression analysis of large-scale single-cell transcriptomics data using Dreamlet
+    year: 2026
+    verified: true
+    qc_links:
+      - category: low-cell-stats
+        effect: precision weights make small pseudobulk samples usable instead of a hard minimum-cell cutoff
+    track: T5
+    review: 01-demux-recovery#downstream
+    tags: [pseudobulk]

@@ -1,0 +1,741 @@
+# T3 records: statistics with few cells (low-cell-stats), plus adjacent de-pseudobulk and perturbation-models nodes.
+# Written 2026-10-21. Every doi/pmid was resolved via NCBI esummary (PMIDs) or Crossref/DataCite
+# (DOIs) and cite_title copied from that response. Tiers for kind: evidence: standard when the conclusion is in a
+# best-practice guide (Heumos 2023) or is a textbook replication principle, published-unbenchmarked for a single
+# study or a disputed finding.
+records:
+
+  # ---------------------------------------------------------------- pseudobulk and replicate-aware DE
+
+  - id: pseudobulk-de
+    name: Pseudobulk differential expression
+    kind: method
+    layer: core
+    categories: [low-cell-stats, de-pseudobulk]
+    side: additive
+    tier: standard
+    summary: "Sum counts per replicate sample (culture, well or donor) and cell type, then test with bulk RNA-seq tools (edgeR, DESeq2, limma-voom) so the replicate, not the cell, is the unit of inference"
+    recovers: "Calibrated p-values and bulk-concordant DE calls, from samples of any cell count, using mature small-n statistics"
+    gain: "All six top-ranked of 14 DE methods by concordance with matched bulk RNA-seq (AUCC) were pseudobulk methods across 18 gold-standard datasets (Squair 2021); pseudobulk had the highest average AUROC and best F1 among 18 methods (Junttila 2022)"
+    gain_source: independent
+    requires: [filtered-matrix, replicates]
+    caveats: "Needs genuine replicates; with one culture per condition there is no between-replicate variance to estimate. Sum vs mean aggregation is disputed (Junttila 2022 favour sum; Murphy & Skene 2022 favour mean but attribute it to a simulation normalisation flaw). Less sensitive than cell-level tests by design. Batch covariate modelling beats batch-corrected input (Nguyen 2023)."
+    url: https://www.sc-best-practices.org/conditions/differential_gene_expression.html
+    language: multiple
+    doi: 10.1038/s41576-023-00586-w
+    pmid: "37002403"
+    cite_title: "Best practices for single-cell analysis across modalities."
+    year: 2023
+    verified: true
+    papers: ["pmid:34584091", "pmid:35880426", "pmid:33970215", "pmid:39115884", "pmid:40794957", "pmid:36944632"]
+    benchmarks: [squair-2021-de-benchmark, junttila-2022-ds-benchmark, gagnon-2022-de-benchmark, hafner-2025-nested-de-benchmark]
+    qc_links:
+      - {category: ambient-rna, effect: "Ambient RNA levels are sample-specific, and uncorrected DE between patients and controls called ambient transcripts as cell-type disease genes, so correct ambient RNA per sample before aggregating ([[fastcar]], PMID 38030970)"}
+    track: T3
+    review: 03-low-cell-stats#pseudobulk-de
+    tags: [pseudoreplication, edgeR, DESeq2, limma, drug-screen]
+
+  - id: squair-2021
+    name: "Squair et al. 2021: confronting false discoveries"
+    kind: evidence
+    layer: core
+    categories: [low-cell-stats, de-pseudobulk]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 14 DE methods on 18 datasets with matched bulk RNA-seq showing that methods ignoring replicate-to-replicate variation are biased toward highly expressed genes and call hundreds of DE genes when there is no biological difference"
+    gain: "Single-cell methods called hundreds of DE genes between randomly assigned replicates with no perturbation; pseudobulk methods abolished these; random-cell pseudo-replicates brought the bias and the false DE genes back"
+    gain_source: independent
+    requires: [replicates]
+    caveats: "GLMMs could not be run on full datasets for compute reasons; on 25-50 cell subsets they were accurate only for specific parameter combinations. Directly relevant to split-well designs: aggregating random groups of cells into pseudo-replicates shrank variance most for highly expressed genes (46 datasets) and lost performance."
+    url: https://doi.org/10.1038/s41467-021-25960-2
+    language: R
+    doi: 10.1038/s41467-021-25960-2
+    pmid: "34584091"
+    cite_title: "Confronting false discoveries in single-cell differential expression."
+    year: 2021
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#squair-2021
+    tags: [benchmark, pseudoreplication, ground-truth-bulk]
+
+  - id: junttila-2022
+    name: "Junttila et al. 2022: multi-subject differential state benchmark"
+    kind: evidence
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: neutral
+    tier: standard
+    summary: "Independent benchmark of 18 differential-state methods (6 pseudobulk, 3 mixed models, naive cell-level and latent-variable methods) on muscat simulations, reference-free simulations and mock comparisons of real PBMC data"
+    gain: "Pseudobulk methods had the highest average AUROC and clearly the best F1; naive methods had the highest sensitivity but many false positives, and adding latent-variable subject terms did not fix them"
+    gain_source: independent
+    requires: [replicates]
+    caveats: "Sum aggregation generally beat mean (opposite to Murphy & Skene 2022). muscat_MM was inferior on all four data types; MAST_RE slightly better than NEBULA-LN. Simulated 8-40 subjects and 500-4,000 cells per sample, so it does not cover 1-2 replicates per condition."
+    url: https://doi.org/10.1093/bib/bbac286
+    doi: 10.1093/bib/bbac286
+    pmid: "35880426"
+    cite_title: "Benchmarking methods for detecting differential states between conditions from multi-subject single-cell RNA-seq data."
+    year: 2022
+    verified: true
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "Cell filtering sets cells per sample; the benchmark varied cells per sample (500-4,000) and subjects (8-40), and power rose with subjects for every method"}
+    track: T3
+    review: 03-low-cell-stats#junttila-2022
+    tags: [benchmark, pseudoreplication]
+
+  - id: pseudobulk-vs-mixed-debate
+    name: "Pseudobulk vs mixed models: Zimmerman 2021, Murphy & Skene 2022 and reply"
+    kind: evidence
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Exchange over whether generalized linear mixed models with a random effect per sample or pseudobulk give more power at controlled type 1 error in hierarchical single-cell data"
+    gain: "Murphy & Skene: at equal type 1 error, pseudobulk mean had sensitivity >0.9 while all other methods had <0.9 (hierarchicell simulation, 5-40 individuals, 50-500 cells); Zimmerman: pseudobulk conservative and underpowered vs GLMM/MAST_RE"
+    gain_source: independent
+    requires: [replicates]
+    caveats: "Both sides used the same simulator. The reply notes MCC can reward tests whose type 1 error exceeds 0.50. All agree cell-level tests without a sample term inflate type 1 error, and ComBat on the sample variable makes it worse. Lee 2024 proved count pseudobulk with a proper offset has the same point estimates and standard errors as a GLMM, more than 10x faster."
+    url: https://doi.org/10.1038/s41467-021-21038-1
+    doi: 10.1038/s41467-021-21038-1
+    pmid: "33531494"
+    cite_title: "A practical solution to pseudoreplication bias in single-cell studies."
+    year: 2021
+    verified: true
+    papers: ["pmid:36550119", "pmid:36550147", "pmid:39115884", "pmid:35743881"]
+    qc_links:
+      - {category: batch-and-plate-effects, effect: "Treating the sample as a batch to correct (ComBat) before a cell-level test raised type 1 error further; the sample must be in the model, not regressed out"}
+    track: T3
+    review: 03-low-cell-stats#pseudobulk-vs-mixed-debate
+    tags: [pseudoreplication, mixed-models, dispute]
+
+  - id: muscat
+    name: muscat
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: additive
+    tier: standard
+    summary: "Bioconductor package for differential state analysis in multi-sample, multi-condition data: pseudobulk aggregation with edgeR/DESeq2/limma, cell-level mixed models, and a reference-based simulator"
+    recovers: "Subpopulation-specific condition effects tested at the replicate level"
+    gain_source: none
+    requires: [filtered-matrix, replicates]
+    caveats: "pbDS default min_cells = 10 per cluster-sample, so small wells drop out unless lowered. Junttila 2022 found muscat_MM inferior; the dreamlet authors report inflated false positives for muscat's limma-voom path in permuted-label tests. Its simulator is used by several later benchmarks."
+    url: https://bioconductor.org/packages/muscat
+    repo: HelenaLC/muscat
+    language: R
+    doi: 10.1038/s41467-020-19894-4
+    pmid: "33257685"
+    cite_title: "muscat detects subpopulation-specific state transitions from multi-sample multi-condition single-cell transcriptomics data."
+    year: 2020
+    verified: true
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "Cells removed by QC lower per-sample counts; samples under min_cells (default 10) are excluded from the test"}
+      - {category: demux-hashing, effect: "Demultiplexing defines the sample each cell is summed into; misassigned cells blur replicate profiles"}
+    benchmarks: [squair-2021-de-benchmark, junttila-2022-ds-benchmark]
+    track: T3
+    review: 03-low-cell-stats#muscat
+    tags: [pseudobulk, simulation, bioconductor]
+
+  - id: dreamlet
+    name: dreamlet
+    kind: tool
+    layer: core
+    categories: [low-cell-stats, de-pseudobulk]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "R/Bioconductor pseudobulk workflow fitting precision-weighted linear mixed models per cell cluster, with initial weights from a Poisson model in which more cells and reads per sample mean higher precision"
+    recovers: "Samples with few cells stay in the model at lower weight instead of being dropped; plates, pools and batches can enter as random effects"
+    gain: "Poisson-initialised weights improved performance over the unweighted model; dreamlet controlled the permuted-label false positive rate (target 5%) across sample sizes where muscat limma-voom and glmer/MAST GLMMs were inflated; 2.2M cells from 1,000 donors x 12 cell types pseudobulked in 10 min with 20 GB"
+    gain_source: self-reported
+    requires: [filtered-matrix, replicates]
+    caveats: "processAssays defaults: min.cells = 5 per sample-cluster, min.samples = 4 per cluster, min.prop = 0.4. Weights model measurement precision, not between-culture biological variance, so one culture per condition is still unreplicated. Built for cohorts of hundreds of donors. No independent benchmark of dreamlet itself; its engine dream (DREAM) was recommended as the quality/runtime compromise for atlas-level data by Hafner 2025."
+    url: https://diseaseneurogenomics.github.io/dreamlet/
+    repo: DiseaseNeurogenomics/dreamlet
+    language: R
+    doi: 10.1038/s41467-026-75680-8
+    pmid: "42778542"
+    cite_title: "Efficient differential expression analysis of large-scale single-cell transcriptomics data using Dreamlet."
+    year: 2026
+    verified: true
+    papers: ["pmid:36993704", "pmid:32730587", "pmid:40794957"]
+    track: T3
+    review: 03-low-cell-stats#dreamlet
+    tags: [pseudobulk, precision-weights, mixed-models, drug-screen]
+
+  - id: nebula
+    name: NEBULA
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: additive
+    tier: benchmarked
+    summary: "Negative binomial mixed model with a random effect per subject, fitted with a large-sample approximation instead of the Laplace approximation, for cell-level DE and co-expression in multi-subject data"
+    recovers: "Cell-level information (including expressing fraction) while still accounting for within-sample correlation"
+    gain: "NEBULA-HL and glmmTMB outperformed the other methods, including pseudobulk, in a 12-method simulation benchmark of multi-subject 10x data (Gagnon 2022); orders of magnitude faster than earlier GLMM tools (self-reported)"
+    gain_source: independent
+    requires: [filtered-matrix, replicates]
+    caveats: "Conflicting benchmarks: Junttila 2022 ranked pseudobulk above NEBULA-LN, and Squair 2021 found GLMMs accurate only in narrow settings. The approximation relies on many cells per subject, and its authors found tests of a subject-level variable highly sensitive to the subject variance estimate when subjects are few."
+    url: https://github.com/lhe17/nebula
+    repo: lhe17/nebula
+    language: R
+    doi: 10.1038/s42003-021-02146-6
+    pmid: "34040149"
+    cite_title: "NEBULA is a fast negative binomial mixed model for differential or co-expression analysis of large-scale multi-subject single-cell data."
+    year: 2021
+    verified: true
+    papers: ["pmid:35743881"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "Works on per-cell counts, so low-count cells kept by permissive QC enter the likelihood directly; library size enters as an offset"}
+    benchmarks: [junttila-2022-ds-benchmark, gagnon-2022-de-benchmark]
+    track: T3
+    review: 03-low-cell-stats#nebula
+    tags: [mixed-models, negative-binomial]
+
+  # ---------------------------------------------------------------- weights, variance modelling, minimum cells
+
+  - id: voom-quality-weights
+    name: voomWithQualityWeights (limma sample weights)
+    kind: method
+    layer: core
+    categories: [low-cell-stats]
+    side: additive
+    tier: standard
+    summary: "limma models a variance factor per sample (or per group) and combines it with voom observation weights, so noisy samples such as pseudobulks from few cells are down-weighted instead of removed"
+    recovers: "Power from samples that would otherwise be discarded as low quality"
+    gain: "Down-weighting variable samples gave a more powerful analysis with fewer false discoveries than removing them or weighting equally, in simulations and RNA-seq data"
+    gain_source: self-reported
+    requires: [replicates]
+    caveats: "Weights are estimated from residuals, so they need residual degrees of freedom; with 1-2 replicates per condition they are unstable. A sample that differs for biological reasons can be down-weighted. dreamlet's cell-count weights are an a priori alternative."
+    url: https://bioconductor.org/packages/limma
+    language: R
+    doi: 10.1093/nar/gkv412
+    pmid: "25925576"
+    cite_title: "Why weight? Modelling sample and observational level variability improves power in RNA-seq analyses."
+    year: 2015
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#voom-quality-weights
+    tags: [precision-weights, limma]
+
+  - id: voombygroup
+    name: voomByGroup and voomQWB
+    kind: tool
+    layer: core
+    categories: [low-cell-stats, de-pseudobulk]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "limma-voom variants for pseudobulk data whose groups have unequal variances: voomByGroup fits a separate mean-variance trend per group, voomQWB fits one quality weight per group"
+    recovers: "Power and error control lost when one high-variance group inflates (or a low-variance group deflates) the pooled variance"
+    gain: "Better error control and power than voom, voomWithQualityWeights and other gold-standard methods when group variances differ (simulations and several pseudobulk datasets); common BCV ranged 0.338-0.495 across groups in a lung macrophage dataset"
+    gain_source: self-reported
+    requires: [replicates]
+    caveats: "Group-specific trends need several replicates per group; with 1-2 wells per drug they cannot be estimated, but they can separate a replicated control group from pooled treated groups. No independent benchmark found."
+    url: https://github.com/YOU-k/voomByGroup
+    repo: YOU-k/voomByGroup
+    language: R
+    doi: 10.1186/s13059-023-02949-2
+    pmid: "37147723"
+    cite_title: "Modeling group heteroscedasticity in single-cell RNA-seq pseudo-bulk data."
+    year: 2023
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#voombygroup
+    tags: [heteroscedasticity, limma, pseudobulk]
+
+  - id: empirical-bayes-moderation
+    name: Empirical Bayes moderation (limma, edgeR QL, DESeq2/apeglm)
+    kind: method
+    layer: core
+    categories: [low-cell-stats, de-pseudobulk]
+    side: additive
+    tier: standard
+    summary: "Shrink gene-wise variances, dispersions or fold changes toward a trend estimated across all genes, so tests with 2-3 replicates borrow residual degrees of freedom from the whole transcriptome"
+    recovers: "Stable variance and effect estimates when each condition has very few replicates"
+    gain_source: none
+    requires: [replicates]
+    caveats: "Borrows across genes, not across conditions or drugs; assumes most genes follow a shared variance trend. It cannot create replication: with zero residual degrees of freedom there is nothing to moderate. edgeR v4 revised the quasi-likelihood treatment for small counts, relevant to pseudobulks of few cells."
+    url: https://bioconductor.org/packages/limma
+    language: R
+    doi: 10.2202/1544-6115.1027
+    pmid: "16646809"
+    cite_title: "Linear models and empirical bayes methods for assessing differential expression in microarray experiments."
+    year: 2004
+    verified: true
+    papers: ["pmid:25605792", "pmid:39844453", "pmid:30395178"]
+    track: T3
+    review: 03-low-cell-stats#empirical-bayes-moderation
+    tags: [shrinkage, limma, edgeR, DESeq2]
+
+  - id: minimum-cells-rules
+    name: Minimum-cells rules for pseudobulk samples
+    kind: method
+    layer: core
+    categories: [low-cell-stats, qc-metrics-thresholds]
+    side: both
+    tier: standard
+    summary: "Per-sample cell-count floors applied before pseudobulk testing, for example muscat pbDS min_cells = 10 and dreamlet processAssays min.cells = 5 with min.samples = 4 per cluster"
+    recovers: "Lowering the floor and weighting by cell count keeps small wells as replicates instead of discarding them"
+    gain: "Matched scRNA-seq and bulk of the same cells: about 2,000 cells per cluster were needed to recover most DEGs with modest bulk differences, while 50-100 cells recovered most DEGs with extremely small bulk p-values or abundance above a few hundred TPM (Liu 2023)"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "The floors are software defaults, not values derived from a benchmark. Liu 2023 is a single-aliquot cell-level comparison, not a replicate-level test. Dropping a replicate costs a residual degree of freedom; whether a noisy kept sample at low weight beats dropping it is untested for drug screens."
+    url: https://diseaseneurogenomics.github.io/dreamlet/reference/processAssays.html
+    language: R
+    doi: 10.1186/s12864-023-09487-y
+    pmid: "37394518"
+    cite_title: "Robustness of single-cell RNA-seq for identifying differentially expressed genes."
+    year: 2023
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#minimum-cells-rules
+    tags: [thresholds, pseudobulk, drug-screen]
+
+  # ---------------------------------------------------------------- one culture per condition
+
+  - id: cell-subsample-pseudoreplicates
+    name: Cell-subsample pseudoreplicates (one culture per condition)
+    kind: evidence
+    layer: core
+    categories: [low-cell-stats, screen-design]
+    side: neutral
+    tier: standard
+    summary: "Splitting one well's cells into random subsets and treating them as replicates measures within-well sampling noise, so the resulting p-values test whether two wells differ, not whether a drug effect would reproduce in another culture"
+    gain_source: none
+    requires: [filtered-matrix]
+    caveats: "Squair 2021: random-cell pseudo-replicates shrank variance most for highly expressed genes (46 datasets) and reintroduced false DE genes in null comparisons. Lazic 2018: only 22% of surveyed animal studies replicated the correct entity-intervention pair and 46% pseudoreplicated. Honest uses: effect sizes, rankings, and comparison with a well-to-well null built from replicate control wells."
+    url: https://doi.org/10.1371/journal.pbio.2005282
+    doi: 10.1371/journal.pbio.2005282
+    pmid: "29617358"
+    cite_title: "What exactly is 'N' in cell culture and animal experiments?"
+    year: 2018
+    verified: true
+    papers: ["pmid:34584091", "pmid:22421999", "pmid:25317452"]
+    benchmarks: [squair-2021-de-benchmark]
+    track: T3
+    review: 03-low-cell-stats#cell-subsample-pseudoreplicates
+    tags: [pseudoreplication, drug-screen, design]
+
+  - id: ruviii-pbps
+    name: RUVIII with pseudobulk pseudosamples (RUVIII-PBPS)
+    kind: method
+    layer: core
+    categories: [low-cell-stats, batch-and-plate-effects]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Resample cells with replacement within biology-by-batch groups and pseudobulk them into artificial pseudosamples used only to estimate unwanted-variation factors for RUVIII when technical replicates or negative-control genes are missing"
+    recovers: "Removal of plate or processing effects from pseudobulk DE when only one single-cell sample per group exists to define replicates for RUV"
+    gain: "Processing-cohort ASW on 2 PCs fell from 0.17 to 0.06; FDR controlled where standard RUV could not be used; per-cell-type RUV2/RUVIII controlled FDR even under confounding"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "The pseudosamples feed factor estimation, not the DE test; the test still needs genuine replicates. Requires a known batch that crosses the biology of interest. Improper RUV on pseudobulk can remove biology."
+    url: https://github.com/esprietol/ruvPBPS
+    repo: esprietol/ruvPBPS
+    language: R
+    doi: 10.1093/nargab/lqaf179
+    pmid: "41368194"
+    cite_title: "Removal of unwanted variation in pseudobulk analysis of single-cell RNA sequencing data and the leveraging of pseudoreplicates."
+    year: 2025
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#ruviii-pbps
+    tags: [RUV, batch, pseudoreplicates, plate]
+
+  - id: pooled-variance-unreplicated-drugs
+    name: Pooled residual variance for unreplicated drugs
+    kind: hypothesis
+    layer: core
+    categories: [low-cell-stats, screen-design]
+    side: additive
+    tier: hypothesis
+    summary: "Fit one linear model across all wells so that drugs with a single well are tested against a residual variance estimated from replicated wells, such as several vehicle wells or a replicated subset of drugs"
+    recovers: "A replicate-level test for unreplicated drugs without inventing replicates from cell subsets"
+    gain_source: none
+    requires: [multiple-conditions, replicates]
+    caveats: "Assumes unreplicated drugs share the variance of the replicated wells; voomByGroup shows group variances often differ in pseudobulk data. Residual degrees of freedom come only from replicated conditions. Untested in single-cell drug screens."
+    verified: false
+    track: T3
+    review: 03-low-cell-stats#pooled-variance-unreplicated-drugs
+    tags: [drug-screen, limma, design]
+
+  - id: control-well-null
+    name: Well-to-well null from replicate control wells
+    kind: hypothesis
+    layer: core
+    categories: [low-cell-stats, screen-design]
+    side: additive
+    tier: hypothesis
+    summary: "Compare each drug-vs-vehicle statistic (DE count, effect distance, program shift) with its distribution across vehicle-vs-vehicle well pairs, so the significance threshold reflects real culture-to-culture variation"
+    recovers: "Calibrated calls in screens where most conditions have one well, using the null-comparison logic of the Squair 2021 and Junttila 2022 mock analyses"
+    gain_source: none
+    requires: [multiple-conditions]
+    caveats: "Needs several vehicle wells spread across plates and positions; assumes drug wells vary like vehicle wells; summary statistics must be computed identically (same cell numbers, subsampled if needed). Not validated in a published drug screen."
+    verified: false
+    track: T3
+    review: 03-low-cell-stats#control-well-null
+    tags: [drug-screen, calibration, design]
+
+  # ---------------------------------------------------------------- borrowing strength across conditions
+
+  - id: mashr
+    name: mashr (multivariate adaptive shrinkage)
+    kind: tool
+    layer: core
+    categories: [low-cell-stats]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Fits data-driven covariance patterns of effects across many conditions and returns shrunken effect estimates and local false sign rates per condition"
+    recovers: "Effects in conditions that are underpowered alone but share effect patterns with related conditions (drugs of one class, doses of one drug)"
+    gain: "GTEx eQTLs in 44 tissues: 47% of 707,036 top-SNP effects significant at lfsr < 0.05 with mash vs 13% for condition-by-condition ash and 39% for mash-bmalite"
+    gain_source: self-reported
+    requires: [multiple-conditions]
+    caveats: "Needs per-condition effects and standard errors that are themselves valid, ideally from replicate-level pseudobulk. Contrasts against one shared vehicle control have correlated errors; mashr handles this through a reference condition in mash_update_data (common-baseline vignette). No single-cell drug-screen benchmark found."
+    url: https://stephenslab.github.io/mashr/
+    repo: stephenslab/mashr
+    language: R
+    doi: 10.1038/s41588-018-0268-8
+    pmid: "30478440"
+    cite_title: "Flexible statistical methods for estimating and testing effects in genomic studies with multiple conditions."
+    year: 2019
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#mashr
+    tags: [shrinkage, multi-condition, drug-screen]
+
+  - id: dose-response-modelling
+    name: Dose-response modelling across doses
+    kind: method
+    layer: core
+    categories: [low-cell-stats, perturbation-models]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Model each gene or program score as a function of dose (a log-dose term in a GLM, or sigmoid and benchmark-dose curves) so all doses of a drug inform one trend instead of being tested one at a time"
+    recovers: "Power from doses that are individually underpowered; potency summaries (EC50-like) per drug"
+    gain: "sci-Plex: generalized linear regression on dose found 6,238 genes with dose-dependent expression in at least one of three cell lines (FDR < 5%) at a median of 100-200 cells per condition"
+    gain_source: self-reported
+    requires: [doses-or-time, multiple-conditions]
+    caveats: "A monotone or log-linear dose term misses non-monotone responses; TRADE found perturbations whose responses differ qualitatively across dose levels. Cell-level dose regression is still pseudoreplicated unless doses are crossed with replicate wells. Bulk comparison in sci-Plex showed weaker agreement for small effects. See [[sci-plex]]."
+    url: https://CRAN.R-project.org/package=drc
+    language: R
+    doi: 10.1371/journal.pone.0146021
+    pmid: "26717316"
+    cite_title: "Dose-Response Analysis Using R."
+    year: 2015
+    verified: true
+    papers: ["pmid:31806696", "pmid:30444611", "pmid:40259084"]
+    track: T3
+    review: 03-low-cell-stats#dose-response-modelling
+    tags: [dose-response, drug-screen, sci-plex]
+
+  - id: trade
+    name: TRADE (transcriptome-wide analysis of differential expression)
+    kind: tool
+    layer: core
+    categories: [low-cell-stats, perturbation-models]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Models the distribution of true DE effects from pseudobulk effect estimates and standard errors to estimate each perturbation's transcriptome-wide impact, including effects too small for per-gene significance"
+    recovers: "A per-perturbation effect-size summary that remains estimable when few individual genes pass FDR"
+    gain: "FDR-significant genes explained only 13-36% of estimated transcriptome-wide impact across five Perturb-seq screens (K562 genome-wide 36%, Jurkat essential 13%); a typical perturbation affected about 45 genes, essential genes over 500"
+    gain_source: self-reported
+    requires: [multiple-conditions, replicates]
+    caveats: "Inputs are DESeq2 pseudobulk estimates per batch (perturbed vs unperturbed within batch), so validity rests on those standard errors. Downward bias for very small effects at finite sample size. Developed on CRISPR screens."
+    url: https://github.com/ajaynadig/TRADEtools
+    repo: ajaynadig/TRADEtools
+    language: R
+    doi: 10.1038/s41588-025-02169-3
+    pmid: "40259084"
+    cite_title: "Transcriptome-wide analysis of differential expression in perturbation atlases."
+    year: 2025
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#trade
+    tags: [effect-size, perturb-seq, drug-screen]
+
+  - id: gsfa
+    name: GSFA (guided sparse factor analysis)
+    kind: tool
+    layer: core
+    categories: [low-cell-stats, perturbation-models]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Bayesian sparse factor model that infers co-regulated gene modules and each perturbation's effect on them, then propagates module effects back to individual genes"
+    recovers: "Gene-level perturbation effects detectable through shared modules when cells per perturbation are few (hundreds or fewer)"
+    gain: "In simulations GSFA calls at LFSR < 0.05 kept false discovery proportions well below 0.05 in most settings while edgeR-QLF and t-test calls were inflated in count-based scenarios, with higher power than t-test, edgeR-QLF and MAST"
+    gain_source: self-reported
+    requires: [multiple-conditions]
+    caveats: "Cell-level model of CRISPR screens; well or culture replication is not modelled. Inference uses Gibbs sampling, which its authors note could be replaced by faster variational methods. No independent benchmark found."
+    url: https://xinhe-lab.github.io/GSFA/
+    repo: xinhe-lab/GSFA
+    language: R
+    doi: 10.1038/s41592-023-02017-4
+    pmid: "37770710"
+    cite_title: "A new Bayesian factor analysis method improves detection of genes and biological processes affected by perturbations in single-cell CRISPR screening."
+    year: 2023
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#gsfa
+    tags: [factor-model, perturb-seq]
+
+  - id: scdist
+    name: scDist
+    kind: tool
+    layer: core
+    categories: [low-cell-stats]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Mixed-effects model of the distance between condition means in a low-dimensional expression space, with a random effect per sample, to rank which cell types or conditions changed while controlling individual and cohort variation"
+    recovers: "A replicate-aware answer to 'did anything change' when per-gene tests are underpowered"
+    gain: "Outperformed current methods in simulated and real datasets even with limited sample sizes, with fewer false positives from individual and cohort variation"
+    gain_source: self-reported
+    requires: [replicates]
+    caveats: "Needs replicate samples. A cell-level permutation alternative, the E-test of scPerturb, permutes cells, so with one well per condition it tests whether two wells differ."
+    url: https://github.com/phillipnicol/scDist
+    repo: phillipnicol/scDist
+    language: R
+    doi: 10.1038/s41467-024-51649-3
+    pmid: "39218971"
+    cite_title: "Robust identification of perturbed cell types in single-cell RNA-seq data."
+    year: 2024
+    verified: true
+    papers: ["pmid:38279009"]
+    track: T3
+    review: 03-low-cell-stats#scdist
+    tags: [effect-size, distance, mixed-models]
+
+  # ---------------------------------------------------------------- program and signature level
+
+  - id: decoupler
+    name: decoupler / decoupleR (PROGENy, DoRothEA footprints)
+    kind: tool
+    layer: core
+    categories: [low-cell-stats, perturbation-models]
+    side: additive
+    tier: standard
+    summary: "Framework that scores pathway and transcription-factor activities from prior-knowledge footprint gene sets (PROGENy, DoRothEA/CollecTRI) with methods such as univariate and multivariate linear models, on cells or on pseudobulk contrast statistics"
+    recovers: "One activity per pathway or regulator, pooling evidence from many weakly changed genes into a test with fewer comparisons"
+    gain: "decoupleR benchmark: simple linear models and a consensus score best predicted perturbed regulators; Holland 2020: footprint gene sets worked on simulated and CRISPR scRNA-seq comparably to bulk and partly better than SCENIC/AUCell and metaVIPER; PROGENy AUROC fell from 0.724 to 0.636 as gene coverage dropped"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Performance depends more on the gene sets than on the statistic. Footprints come from bulk perturbation data in other contexts. Run on replicate-level contrast statistics to keep inference honest; cell-level scores inherit pseudoreplication. Benchmarks are from the same lab."
+    url: https://decoupler.readthedocs.io/
+    repo: scverse/decoupler
+    language: multiple
+    doi: 10.1093/bioadv/vbac016
+    pmid: "36699385"
+    cite_title: "decoupleR: ensemble of computational methods to infer biological activities from omics data."
+    year: 2022
+    verified: true
+    papers: ["pmid:29295995", "pmid:31340985", "pmid:37843125", "pmid:32051003"]
+    track: T3
+    review: 03-low-cell-stats#decoupler
+    tags: [signatures, pathways, transcription-factors, drug-screen]
+
+  - id: signature-scoring-evidence
+    name: Gene-set scoring benchmarks (cell-level and pseudobulk)
+    kind: evidence
+    layer: core
+    categories: [low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Benchmarks of gene-set and pathway scoring methods (AUCell, UCell, ssGSEA, GSVA, z-score, Pagoda2, PLAGE, JASMINE) showing that method choice changes the size and even the sign of program scores"
+    gain_source: none
+    requires: [filtered-matrix]
+    caveats: "Zhang 2020: Pagoda2 best overall of 7 tools on 32 datasets, PLAGE most stable. Noureen 2022 (JASMINE): bulk-style scorers are biased by the number of detected genes per cell. PathwayBench (Research Square preprint, 8 pseudobulked case-control datasets, 682 donors): rank-based AUCell and UCell inverted the sign in 40% of simulated replicates under high competitor burden; no method met all five criteria."
+    url: https://doi.org/10.1016/j.csbj.2020.10.007
+    doi: 10.1016/j.csbj.2020.10.007
+    pmid: "33209207"
+    cite_title: "Benchmarking algorithms for pathway activity transformation of single-cell RNA-seq data."
+    year: 2020
+    verified: true
+    papers: ["pmid:35212622", "pmid:42466400"]
+    track: T3
+    review: 03-low-cell-stats#signature-scoring-evidence
+    tags: [signatures, benchmark, preprint]
+
+  # ---------------------------------------------------------------- imputation, latent and deep models
+
+  - id: imputation-de-evidence
+    name: Imputation and smoothing before DE (Andrews & Hemberg 2018; Hou 2020)
+    kind: evidence
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Evaluations showing that imputation and smoothing (MAGIC, kNN-smoothing, DCA, SAVER, scImpute, DrImpute and others) create false-positive DE and correlations and mostly erase small effects"
+    gain: "Hou 2020 (18 methods): with large DE, 13 of 16 methods raised overlap with bulk DEGs; with small DE, only 2 of 16 did. Andrews & Hemberg: MAGIC, knn-smooth and DCA produced many false positives; SAVER was least likely to"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Imputation reuses the data's own structure, so tests on imputed values are circular. Recommendation from both studies: test on un-imputed counts; use imputation for visualisation only."
+    url: https://doi.org/10.12688/f1000research.16613.2
+    doi: 10.12688/f1000research.16613.2
+    pmid: "30906525"
+    cite_title: "False signals induced by single-cell imputation."
+    year: 2018
+    verified: true
+    papers: ["pmid:32854757"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "Imputation does not make low-count cells kept by permissive QC safe to test; it spreads neighbour signal into them"}
+    track: T3
+    review: 03-low-cell-stats#imputation-de-evidence
+    tags: [imputation, denoising, false-positives]
+
+  - id: scvi-de
+    name: scVI differential expression (lvm-DE)
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: additive
+    tier: benchmarked
+    summary: "Bayesian DE from scVI-family deep generative models: posterior log-fold-change estimates from the denoised model, with an empirical Bayes treatment of their uncertainty"
+    recovers: "Denoised, depth-corrected effect estimates for sparse genes"
+    gain: "Outperformed state-of-the-art methods at estimating log fold change and detecting DE genes between cell subpopulations"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Compares groups of cells; sample-level replication is not modelled (MrVI adds that). The independent nested benchmark of Hafner 2025 found single-cell-specific methods including scVI no better than pseudobulk DESeq2 on individual datasets, and slower."
+    url: https://docs.scvi-tools.org/en/stable/user_guide/models/scvi.html
+    repo: scverse/scvi-tools
+    language: Python
+    doi: 10.1073/pnas.2209124120
+    pmid: "37192164"
+    cite_title: "An empirical Bayes method for differential expression analysis of single cells with deep generative models."
+    year: 2023
+    verified: true
+    papers: ["pmid:30504886", "pmid:40794957"]
+    qc_links:
+      - {category: batch-and-plate-effects, effect: "Batch is a model covariate; a plate confounded with condition is absorbed and cannot be separated from the condition"}
+    benchmarks: [hafner-2025-nested-de-benchmark]
+    track: T3
+    review: 03-low-cell-stats#scvi-de
+    tags: [deep-generative, scvi-tools]
+
+  - id: mrvi
+    name: MrVI (multi-resolution variational inference)
+    kind: tool
+    layer: adjacent
+    categories: [perturbation-models, de-pseudobulk]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Deep generative model in scvi-tools with a sample-aware latent space that computes counterfactual cells to stratify samples and find cell-state-specific DE and differential abundance without predefined clusters"
+    recovers: "Sample-level structure (which drugs or doses act alike) and local effects confined to cell subsets"
+    gain: "On sci-Plex A549 (92 drugs x 4 doses as samples), MrVI sample distances agreed better with Connectivity Map drug similarity and placed doses of the same drug closer together than PCA- or scVI-based stratification"
+    gain_source: self-reported
+    requires: [multiple-conditions]
+    caveats: "Requires training a neural network on all cells. Counterfactual DE is model-based, not a replicate-level test. With one well per drug-dose the 'sample' is the well, so drug and well effects are confounded. No independent benchmark found."
+    url: https://docs.scvi-tools.org/en/stable/user_guide/models/mrvi.html
+    repo: scverse/scvi-tools
+    language: Python
+    doi: 10.1038/s41592-025-02808-x
+    pmid: "41083897"
+    cite_title: "Deep generative modeling of sample-level heterogeneity in single-cell genomics."
+    year: 2025
+    verified: true
+    qc_links:
+      - {category: batch-and-plate-effects, effect: "Nuisance covariates such as plate are modelled apart from the target sample covariate, but only if plate is not confounded with drug"}
+    track: T3
+    review: 03-low-cell-stats#mrvi
+    tags: [deep-generative, scvi-tools, sci-plex, drug-screen]
+
+  - id: cpa
+    name: CPA and chemCPA (compositional perturbation autoencoder)
+    kind: tool
+    layer: adjacent
+    categories: [perturbation-models]
+    side: additive
+    tier: benchmarked
+    summary: "Autoencoder that splits each cell into a basal latent state plus additive embeddings for perturbations and covariates, scaled by learned dose-response curves, to predict unseen doses, times and combinations; chemCPA adds molecular structure to reach unseen drugs"
+    recovers: "Predicted responses for unmeasured drug-dose-combination conditions"
+    gain: "Imputed 5,329 missing combinations (97.6% of all possibilities) in a combinatorial Perturb-seq screen and outperformed baseline models on unseen drug combinations in new A549 data"
+    gain_source: self-reported
+    requires: [multiple-conditions, doses-or-time]
+    caveats: "The CPA paper assumes enough cells per condition to estimate the latent space with a large network. In the independent Ahlmann-Eltze 2025 benchmark CPA was particularly uncompetitive on double genetic perturbations (outside its design target). Predictions are not tests and carry no replicate-level uncertainty. scGen (2019) is the earlier latent-arithmetic model from the same group."
+    url: https://cpa-tools.readthedocs.io/
+    repo: theislab/cpa
+    language: Python
+    doi: 10.15252/msb.202211517
+    pmid: "37154091"
+    cite_title: "Predicting cellular responses to complex perturbations in high-throughput screens."
+    year: 2023
+    verified: true
+    papers: ["doi:10.48550/arXiv.2204.13545", "pmid:31363220"]
+    qc_links:
+      - {category: low-cell-stats, effect: "Conditions with few cells give the network little to learn from; prediction quality for those conditions is the least certain"}
+    benchmarks: [ahlmann-eltze-2025-perturbation-benchmark, li-2026-perturbation-models]
+    track: T3
+    review: 03-low-cell-stats#cpa
+    tags: [deep-learning, drug-screen, combinations, preprint]
+
+  - id: ahlmann-eltze-2025
+    name: "Ahlmann-Eltze et al. 2025: deep perturbation models vs linear baselines"
+    kind: evidence
+    layer: adjacent
+    categories: [perturbation-models, low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Benchmark of five foundation models plus GEARS and CPA against 'no change', additive and linear baselines for predicting transcriptome changes after single and double genetic perturbations; none outperformed the baselines"
+    gain: "On 62 held-out double perturbations every deep model had prediction error substantially higher than the additive baseline, and none beat the 'no change' baseline at finding genetic interactions"
+    gain_source: independent
+    caveats: "Disputed: Miller 2026 (Nat Biotechnol) argues common metrics such as MSE and Pearson delta are miscalibrated and that deep models can beat uninformative baselines on calibrated metrics across 14 datasets. Csendes 2025 and Wong 2025 also found simple baselines ahead. Li 2026 (13 methods, 25 datasets incl. two drug-response sets): models compress variance and underestimate synergy; none generalised across cell types. All concern genetic or immune perturbations, not low-cell drug screens."
+    url: https://doi.org/10.1038/s41592-025-02772-6
+    doi: 10.1038/s41592-025-02772-6
+    pmid: "40759747"
+    cite_title: "Deep-learning-based gene perturbation effect prediction does not yet outperform simple linear baselines."
+    year: 2025
+    verified: true
+    papers: ["pmid:40269681", "pmid:40407144", "pmid:42823510", "pmid:42715312", "pmid:37592036"]
+    qc_links:
+      - {category: low-cell-stats, effect: "With few cells per condition, additive or linear baselines on pseudobulk effects are the reference any deep model must beat"}
+    track: T3
+    review: 03-low-cell-stats#ahlmann-eltze-2025
+    tags: [benchmark, deep-learning, foundation-models, dispute]
+
+  - id: mixscape
+    name: Mixscape (and perturbation-response scores)
+    kind: tool
+    layer: adjacent
+    categories: [perturbation-models, low-cell-stats]
+    side: additive
+    tier: standard
+    summary: "Computes a local perturbation signature per cell by subtracting the mean of its 20 nearest control neighbours, then uses a mixture model to classify targeted cells as perturbed or non-perturbed before DE"
+    recovers: "Effects diluted by non-responding cells; variation from replicate, cell cycle and stress removed from the signature"
+    gain: "In the ECCITE-seq screen, 115 of 278 cells carrying an IFNGR2 gRNA appeared to escape perturbation; signatures substantially reduced replicate, cell-cycle and stress variation"
+    gain_source: self-reported
+    requires: [multiple-conditions]
+    caveats: "Built for CRISPR, where escape is near-binary; drug responses are graded, which the perturbation-response score of Song 2025 models instead. Testing only on 'responders' inflates effect sizes and is circular unless the classification uses separate data. Needs enough cells per perturbation to fit the mixture."
+    url: https://satijalab.org/seurat/articles/mixscape_vignette
+    repo: satijalab/seurat
+    language: multiple
+    doi: 10.1038/s41588-021-00778-2
+    pmid: "33649593"
+    cite_title: "Characterizing the molecular regulation of inhibitory immune checkpoints with multimodal single-cell screens."
+    year: 2021
+    verified: true
+    papers: ["pmid:40011559"]
+    qc_links:
+      - {category: cell-cycle-and-stress, effect: "The local signature subtracts matched control neighbours, removing cell-cycle and stress states shared with controls"}
+    track: T3
+    review: 03-low-cell-stats#mixscape
+    tags: [responders, crispr, pertpy]
+
+  # ---------------------------------------------------------------- power
+
+  - id: hierarchicell
+    name: hierarchicell
+    kind: tool
+    layer: core
+    categories: [low-cell-stats, screen-design]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Simulates hierarchical scRNA-seq data with within-sample correlation estimated from real data to estimate DE power by number of independent units and cells per unit"
+    gain_source: none
+    requires: [replicates]
+    caveats: "Its authors show that calculators counting cells instead of independent units grossly overestimate power. Murphy & Skene 2022 found the simulator omits a normalisation step that affects sum-pseudobulk results. powsimR (Vieth 2017) is an older simulation-based calculator."
+    url: https://github.com/kdzimm/hierarchicell
+    repo: kdzimm/hierarchicell
+    language: R
+    doi: 10.1186/s12864-021-07635-w
+    pmid: "33932993"
+    cite_title: "Hierarchicell: an R-package for estimating power for tests of differential expression with single-cell data."
+    year: 2021
+    verified: true
+    track: T3
+    review: 03-low-cell-stats#hierarchicell
+    tags: [power, simulation, design]

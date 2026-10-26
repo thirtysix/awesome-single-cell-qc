@@ -1,0 +1,787 @@
+# Track T2: keeping cells at cell calling and QC; damaged cells.
+# Hand-written layer; see docs/review/02-calling-qc-damaged.md.
+records:
+- id: emptydrops
+  name: EmptyDrops (DropletUtils)
+  kind: tool
+  layer: core
+  categories:
+  - cell-calling
+  - ambient-rna
+  side: additive
+  tier: standard
+  summary: Calls cells by testing each barcode's profile against the ambient RNA profile estimated from low-count barcodes,
+    so small low-RNA cells that differ from the soup are kept
+  recovers: low-RNA cells and whole cell types that a total-UMI knee threshold discards
+  gain: retained a putative interneuron cluster in ~900 brain cells and putative monocytes in placenta that the Cell Ranger
+    v2 knee discarded; FDR among retained barcodes controlled at 0.1% (self-reported, simulations and real data)
+  gain_source: self-reported
+  requires:
+  - raw-matrix
+  caveats: Cell Ranger >= 3 runs an EmptyDrops-like second step, but its candidate set is bounded (the STARsolo EmptyDrops_CR
+    emulation hard-codes umiMin 500 and umiMinFracMedian 0.01 as Cell Ranger values), so very low-RNA barcodes are never tested;
+    DropletUtils defaults to lower = 100. In high-ambient samples it keeps empty and damaged droplets that need post-filtering
+    (DropletQC found 0.4-9.5% cell-free droplets among EmptyDrops calls). Its result depends on the quantifier; on zUMIs and
+    kallisto bustools output for a ~3,000-cell mixture it called ~60,000 cells (You 2021). In snRNA-seq of adipose tissue
+    87.9% of its passing droplets were nuclear against 95.7% for DIEM, and it removed 1,038 and 782 nuclear droplets in two
+    samples (DIEM paper, competitor); hashing-labelled AUROC 79.87% in the EmptyNN paper (competitor).
+  url: https://bioconductor.org/packages/DropletUtils
+  repo: MarioniLab/DropletUtils
+  language: R
+  doi: 10.1186/s13059-019-1662-y
+  pmid: '30902100'
+  cite_title: 'EmptyDrops: distinguishing cells from empty droplets in droplet-based single-cell RNA sequencing data'
+  year: 2019
+  verified: true
+  papers:
+  - pmid:34906205
+  - pmid:32620816
+  - pmid:34430929
+  track: T2
+  review: 02-calling-qc-damaged#emptydrops
+  tags:
+  - droplet
+  - 10x
+  - low-rna
+  - starsolo
+  - cellranger
+- id: cellbender
+  name: CellBender remove-background
+  kind: tool
+  layer: core
+  categories:
+  - ambient-rna
+  - cell-calling
+  side: both
+  tier: benchmarked-sota
+  summary: Deep generative model of droplet counts that calls cell-containing droplets, learns the ambient profile and returns
+    background-subtracted counts
+  recovers: marker specificity in kept cells and cells that would otherwise be dropped or mislabelled because of ambient signal
+  gain: 'Janssen 2023 (genotype-mixed mouse kidney): most precise per-cell noise estimate; Slc34a1 detected in ~60% of non-PT
+    cells raw, 7% after CellBender (SoupX 54%, DecontX 2%); Cargnelli 2026: best overall trade-off of ambient removal and
+    endogenous retention; Nie 2026: top decontamination efficacy, robust to cell number and depth; Schroeder 2026 (preprint,
+    6 tools, droplet and BD Rhapsody data): reliable removal with minimal count distortion; Meier 2026 (preprint): the only
+    one of three ambient tools after which doublet detection was not worse than before correction'
+  gain_source: independent
+  requires:
+  - raw-matrix
+  caveats: Over-corrects when there is little or no ambient RNA (Cargnelli 2026); GPU strongly preferred; clustering gains
+    are small and fine structure can be distorted (Janssen 2023); not independently benchmarked as a cell caller; in the
+    EmptyNN paper (competitor) it kept 1,686 droplets against ~6,000 for other callers on genotype-labelled data (AUROC
+    58.02%).
+  url: https://cellbender.readthedocs.io
+  repo: broadinstitute/CellBender
+  language: Python
+  doi: 10.1038/s41592-023-01943-7
+  pmid: '37550580'
+  cite_title: Unsupervised removal of systematic background noise from droplet-based single-cell experiments using CellBender
+  year: 2023
+  verified: true
+  papers:
+  - pmid:37337297
+  - pmid:42688285
+  - pmid:42844284
+  - doi:10.64898/2026.04.08.717130
+  - doi:10.64898/2026.10.13.758369
+  benchmarks: [janssen-2023-background-noise, cargnelli-2026-ambient-benchmark, nie-2026-ambient-benchmark, schroeder-2026-ambient-benchmark,
+    meier-2026-ambient-doublet-order]
+  track: T2
+  review: 02-calling-qc-damaged#cellbender
+  tags:
+  - droplet
+  - deep-learning
+  - gpu
+  - cell-calling
+- id: cb2
+  name: CB2 (scCB2)
+  kind: tool
+  layer: core
+  categories:
+  - cell-calling
+  side: additive
+  tier: published-unbenchmarked
+  summary: Extends EmptyDrops by clustering similar barcodes before testing them against the ambient profile, which raises
+    power for small cells
+  recovers: extra real cells, mostly in existing populations
+  gain: 24% more cells than EmptyDrops on average (range 4-81%), 88% of the extra cells joining existing subpopulations; +18%
+    cells and a new 209-cell subpopulation in an Alzheimer snRNA-seq dataset
+  gain_source: self-reported
+  requires:
+  - raw-matrix
+  caveats: No independent benchmark; still needs post-filtering for damaged cells (valiDrops comparison, 2023).
+  url: https://bioconductor.org/packages/scCB2
+  repo: zijianni/scCB2
+  language: R
+  doi: 10.1186/s13059-020-02054-8
+  pmid: '32513247'
+  cite_title: CB2 improves power of cell detection in droplet-based single-cell RNA sequencing data
+  year: 2020
+  verified: true
+  papers:
+  - pmid:38025048
+  track: T2
+  review: 02-calling-qc-damaged#cb2
+  tags:
+  - droplet
+  - low-rna
+- id: soupx
+  name: SoupX
+  kind: tool
+  layer: core
+  categories:
+  - ambient-rna
+  side: both
+  tier: standard
+  summary: Estimates a per-channel ambient (soup) profile from empty droplets and a contamination fraction from genes that
+    should be absent, then subtracts the soup from each cell
+  recovers: specificity of marker and response genes in kept cells, so cells need not be dropped for ambient-driven mixed
+    profiles
+  gain: 'Nie 2026: second-lowest error and smallest variance for absolute contamination across contamination levels; Cargnelli
+    2026: reduced mode (filtered matrix only) is one of three recommended methods and less prone than CellBender or DecontX
+    to over-correct samples without ambient RNA; Schroeder 2026 (preprint): reliable removal with minimal count distortion'
+  gain_source: independent
+  requires:
+  - raw-matrix
+  caveats: 'One contamination fraction per channel by design, so it underestimates and cannot capture cell-to-cell variation
+    (Janssen 2023: Slc34a1 outside PT only 60% -> 54%); automated mode can miss strong contaminating genes (scCDC 2024). Running
+    it before doublet detection lowered doublet recall (Meier 2026, preprint).'
+  url: https://github.com/constantAmateur/SoupX
+  repo: constantAmateur/SoupX
+  language: R
+  doi: 10.1093/gigascience/giaa151
+  pmid: '33367645'
+  cite_title: SoupX removes ambient RNA contamination from droplet-based single-cell RNA sequencing data
+  year: 2020
+  verified: true
+  papers:
+  - pmid:37337297
+  - pmid:42688285
+  - pmid:42844284
+  - pmid:37002403
+  - doi:10.64898/2026.04.08.717130
+  - doi:10.64898/2026.10.13.758369
+  benchmarks: [janssen-2023-background-noise, cargnelli-2026-ambient-benchmark, nie-2026-ambient-benchmark, schroeder-2026-ambient-benchmark,
+    meier-2026-ambient-doublet-order]
+  track: T2
+  review: 02-calling-qc-damaged#soupx
+  tags:
+  - droplet
+  - best-practice
+- id: decontx
+  name: DecontX (celda / decontX)
+  kind: tool
+  layer: core
+  categories:
+  - ambient-rna
+  side: both
+  tier: benchmarked-sota
+  summary: Bayesian mixture model that splits each cell's counts into native and contaminating parts using cell clusters,
+    optionally with the empty-droplet profile
+  recovers: cell-level native counts without discarding cells; works when only a filtered matrix exists
+  gain: 'Cargnelli 2026: the only method of seven that did not reduce cell-type recovery; Nie 2026: best preservation of per-cell
+    contamination ranking (with scAR) and named most accurate contamination estimate in the abstract; Janssen 2023: Slc34a1
+    outside PT 60% -> 2%; Schroeder 2026 (preprint): with scCDC, the only tool usable on non-droplet platforms without a raw
+    matrix'
+  gain_source: independent
+  requires:
+  - filtered-matrix
+  caveats: Default mode failed on one single-nucleus replicate (87% residual, Janssen 2023); under-corrects highly contaminating
+    genes (scCDC 2024); over-corrects when no ambient is present in full mode (Cargnelli 2026); rank robustness falls with
+    depth (Nie 2026). Correcting with decontX before doublet detection retained the largest share of doublets, because it
+    removes proportionally more counts from doublets (Meier 2026, preprint).
+  url: https://bioconductor.org/packages/decontX
+  repo: campbio/decontX
+  language: R
+  doi: 10.1186/s13059-020-1950-6
+  pmid: '32138770'
+  cite_title: Decontamination of ambient RNA in single-cell RNA-seq with DecontX
+  year: 2020
+  verified: true
+  papers:
+  - pmid:37337297
+  - pmid:42688285
+  - pmid:42844284
+  - doi:10.64898/2026.04.08.717130
+  - doi:10.64898/2026.10.13.758369
+  benchmarks: [janssen-2023-background-noise, cargnelli-2026-ambient-benchmark, nie-2026-ambient-benchmark, schroeder-2026-ambient-benchmark,
+    meier-2026-ambient-doublet-order]
+  track: T2
+  review: 02-calling-qc-damaged#decontx
+  tags:
+  - droplet
+  - cpu
+- id: scar
+  name: scAR (single-cell Ambient Remover)
+  kind: tool
+  layer: core
+  categories:
+  - ambient-rna
+  side: both
+  tier: benchmarked
+  summary: Variational autoencoder that learns the ambient profile from empty droplets and denoises RNA, protein, guide and
+    ATAC counts
+  recovers: clean counts for RNA, CITE-seq and CRISPR guide assignments in kept cells
+  gain: 'Cargnelli 2026: highest ambient-removal score (0.679 vs CellBender 0.604); Nie 2026: most robust across conditions
+    and, with CellBender, highest decontamination efficacy'
+  gain_source: independent
+  requires:
+  - raw-matrix
+  caveats: Overestimates contamination (Nie 2026) and removed on average 0.445 of endogenous signal, mostly from low-expressed
+    genes, hurting label transfer when no ambient was present (Cargnelli 2026); reassigned ~17% of cells to other types in
+    one Nie 2026 dataset; preprint only. Created cell types absent from the raw data, 3 coarse types in BD Rhapsody and up
+    to 8 in prefrontal cortex nuclei (Schroeder 2026, preprint).
+  url: https://scar-tutorials.readthedocs.io
+  repo: Novartis/scar
+  language: Python
+  doi: 10.1101/2022.01.14.476312
+  cite_title: Probabilistic machine learning ensures accurate ambient denoising in droplet-based single-cell omics
+  year: 2022
+  verified: true
+  papers:
+  - pmid:42688285
+  - pmid:42844284
+  - doi:10.64898/2026.04.08.717130
+  benchmarks: [cargnelli-2026-ambient-benchmark, nie-2026-ambient-benchmark, schroeder-2026-ambient-benchmark]
+  track: T2
+  review: 02-calling-qc-damaged#scar
+  tags:
+  - preprint
+  - deep-learning
+  - crispr
+  - cite-seq
+- id: janssen-2023
+  name: Janssen et al. 2023 background-noise study
+  kind: evidence
+  layer: core
+  categories:
+  - ambient-rna
+  - qc-benchmarks
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Genotype-mixed mouse kidney scRNA-seq and snRNA-seq used to measure background noise per cell and to benchmark
+    CellBender, DecontX and SoupX
+  gain: background made up 3-35% of UMIs per cell, mostly ambient RNA; CellBender gave the most precise estimates and the
+    largest marker-gene improvement; clustering was fairly robust to noise
+  gain_source: independent
+  caveats: One tissue (kidney) and three methods; nuclei and cells differ in which method wins.
+  doi: 10.1186/s13059-023-02978-x
+  pmid: '37337297'
+  cite_title: The effect of background noise and its removal on the analysis of single-cell expression data
+  year: 2023
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#janssen-2023
+  tags:
+  - benchmark
+  - genotype-mixing
+  - nuclei
+- id: cargnelli-2026
+  name: Cargnelli et al. 2026 ambient benchmark
+  kind: evidence
+  layer: core
+  categories:
+  - ambient-rna
+  - qc-benchmarks
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Independent benchmark of seven ambient RNA removal methods on simulated, species-mixing, genotype-mixing and contamination-free
+    control data
+  gain: 7 datasets, 64 samples, 135,561 cells; 81.56% of cells carry some ambient RNA (mean 7.79% of UMIs in cells, 11.80%
+    in nuclei); no single best method; recommends CellBender, DecontX (full mode) or SoupX (reduced mode)
+  gain_source: independent
+  caveats: Methods that remove most ambient (scAR, CellBender) also remove endogenous signal or over-correct clean samples;
+    all methods but CellClear inflated marker fold changes beyond ground truth.
+  doi: 10.3389/fbinf.2026.1844838
+  pmid: '42688285'
+  cite_title: Benchmarking computational decontamination of ambient RNA
+  year: 2026
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#cargnelli-2026
+  tags:
+  - benchmark
+  - species-mixing
+  - genotype-mixing
+- id: nie-2026
+  name: Nie et al. 2026 ambient benchmark
+  kind: evidence
+  layer: core
+  categories:
+  - ambient-rna
+  - qc-benchmarks
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Benchmark of seven ambient RNA tools (DecontX, SoupX, scAR, CellBender, FastCAR, scCDC, CellClear) for estimation
+    accuracy, robustness and subtype sensitivity on simulated and experimental data
+  gain: DecontX named most accurate contamination estimate (abstract); scAR most robust but overestimates; CellClear best
+    for close subtypes; in the mtDNA-genotype experiment CellBender and FastCAR were closest to the empirical baseline (mean
+    RMSLE < 0.06)
+  gain_source: independent
+  caveats: The abstract names DecontX most accurate for contamination level, while the mtDNA-genotype experiment in the results
+    favours CellBender and FastCAR; robustness to fewer cells and lower depth differs by tool.
+  doi: 10.1038/s41467-026-77458-4
+  pmid: '42844284'
+  cite_title: Systematic benchmarking of ambient RNA decontamination tools to advance precision in single-cell transcriptomic
+    analysis
+  year: 2026
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#nie-2026
+  tags:
+  - benchmark
+  - genotype-mixing
+- id: mad-adaptive-qc
+  name: MAD-based adaptive QC thresholds (scater/scuttle isOutlier, scanpy)
+  kind: method
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  side: both
+  tier: standard
+  summary: Flags cells whose log counts, log genes, top-gene share or mito fraction lie several median absolute deviations
+    from the median of their batch, instead of using fixed cut-offs
+  recovers: cells that fixed thresholds remove in samples or cell types with atypical baselines
+  gain: 'pipeComp: most clustering benefit is reached without stringent filtering; lenient rules (5 MADs, or 3 MADs on at
+    least 2 metrics) limit loss of whole subpopulations'
+  gain_source: independent
+  requires:
+  - filtered-matrix
+  caveats: Computed on a mixed population it removes cell types with extreme but healthy values (pipeComp); thresholds computed
+    per treatment follow the treatment. sc-best-practices uses 5 MADs plus mito > 3 MADs and > 8%. isOutlier and perCellQCMetrics
+    now live in scuttle [[scuttle]]. Regressing out mito fraction or detected genes later is no substitute for QC, since in pipeComp
+    it nearly always raised correlation with those covariates and lowered clustering accuracy.
+  url: https://bioconductor.org/packages/scuttle
+  repo: alanocallaghan/scater
+  language: multiple
+  doi: 10.1093/bioinformatics/btw777
+  pmid: '28088763'
+  cite_title: 'Scater: pre-processing, quality control, normalization and visualization of single-cell RNA-seq data in R'
+  year: 2017
+  verified: true
+  papers:
+  - pmid:31792435
+  - pmid:37002403
+  - pmid:32873325
+  benchmarks: [germain-2020-pipecomp]
+  track: T2
+  review: 02-calling-qc-damaged#mad-adaptive-qc
+  tags:
+  - best-practice
+  - per-sample
+  - scanpy
+  - bioconductor
+- id: miqc
+  name: miQC
+  kind: tool
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  - damaged-cells
+  side: both
+  tier: published-unbenchmarked
+  summary: Fits a two-component mixture of regressions of mito fraction on genes detected and removes cells with high posterior
+    probability of being compromised
+  recovers: intact cells with naturally high mito fraction, especially in tumours
+  gain: 'menstrual blood (10x): removes 13,499 cells (19.0%) vs 29,129 (41%) at a 10% mito cut; pancreas (C1): 7.8% vs 45.5%;
+    six ovarian cancer samples: 8.1-49.0% vs 8.6-94.8% (miQC removed more in 1 of 6)'
+  gain_source: self-reported
+  requires:
+  - filtered-matrix
+  caveats: Assumes two populations along the genes-mito line; removed a cardiomyocyte cluster (median 15% mito) that ddqc
+    kept; could not be evaluated on MitoChontrol's perturbation tests because they violate its model.
+  url: https://bioconductor.org/packages/miQC
+  repo: greenelab/miQC
+  language: R
+  doi: 10.1371/journal.pcbi.1009290
+  pmid: '34428202'
+  cite_title: 'miQC: An adaptive probabilistic framework for quality control of single-cell RNA-sequencing data'
+  year: 2021
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#miqc
+  tags:
+  - mito
+  - mixture-model
+  - tumour
+- id: ddqc
+  name: ddqc (data-driven QC)
+  kind: tool
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  side: both
+  tier: published-unbenchmarked
+  summary: Clusters cells after minimal filtering, then applies MAD thresholds on genes, UMIs, mito and ribo fractions within
+    each cluster
+  recovers: cell types with high mito or low complexity (neutrophils, metabolically active parenchymal cells) that global
+    cut-offs remove
+  gain: retained a median 95.4% of input cells vs 69.4% with a fixed <200 genes / >10% mito cut-off ('over a third more cells')
+  gain_source: self-reported
+  requires:
+  - filtered-matrix
+  caveats: A cluster made mostly of damaged cells sets its own baseline and can survive; MitoChontrol's perturbation test
+    found ddqc kept many mito-inflated cells and removed some unperturbed ones.
+  url: https://github.com/ayshwaryas/ddqc
+  repo: ayshwaryas/ddqc
+  language: multiple
+  doi: 10.1186/s13059-022-02820-w
+  pmid: '36575523'
+  cite_title: Biology-inspired data-driven quality control for scientific discovery in single-cell transcriptomics
+  year: 2022
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#ddqc
+  tags:
+  - per-cluster
+  - mito
+  - ribo
+- id: mitochontrol
+  name: MitoChontrol
+  kind: tool
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  - damaged-cells
+  side: both
+  tier: published-unbenchmarked
+  summary: Fits a Gaussian mixture to the mito fraction within each transcriptionally coherent cluster and sets a cluster-specific
+    cut where the posterior probability of compromise exceeds a chosen level
+  recovers: viable cell populations with elevated mito fraction
+  gain: on HEK293 data with mtRNA inflated in 10% of cells it removed the inflated subset and kept the baseline; ddqc kept
+    many inflated cells (qualitative, self-reported)
+  gain_source: self-reported
+  requires:
+  - filtered-matrix
+  caveats: Preprint; no removal counts reported; depends on clustering; a global mito shift (all cells) is treated as biology,
+    which is right for metabolic drugs but wrong if a whole condition is damaged.
+  url: https://github.com/uttamLab/mitochontrol
+  repo: uttamLab/mitochontrol
+  language: Python
+  doi: 10.64898/2026.04.04.716517
+  pmid: '41993278'
+  cite_title: 'MitoChontrol: Adaptive mitochondrial filtering for robust single-cell RNA sequencing quality control'
+  year: 2026
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#mitochontrol
+  tags:
+  - preprint
+  - mito
+  - per-cluster
+  - scanpy
+- id: scqcenrich
+  name: scQCenrich
+  kind: tool
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  - damaged-cells
+  - cell-cycle-and-stress
+  side: both
+  tier: published-unbenchmarked
+  summary: Multi-metric post-cell-calling QC that adds intronic fraction, MALAT1 enrichment, dissociation-stress features
+    and optional splicing to counts, genes and mito
+  recovers: neuronal, cardiomyocyte, erythroid and malignant cells that single-metric thresholds over-filter
+  gain: '10x mouse brain: removed 1,185 cells vs Seurat-style 2,520, scater 1,801, miQC 2,770, DropletQC 1,968'
+  gain_source: self-reported
+  requires:
+  - filtered-matrix
+  - spliced-unspliced
+  caveats: New (2026); comparisons are by its authors; whole-cell data only. For MALAT1 as a quality signal see [[malat1-quality-marker]]
+    (preprint).
+  url: https://github.com/lemonlyy755/scQCenrich
+  repo: lemonlyy755/scQCenrich
+  language: R
+  doi: 10.1038/s42003-026-10382-x
+  pmid: '42342867'
+  cite_title: ScQCenrich enables multi-metric quality control for single-cell RNA sequencing
+  year: 2026
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#scqcenrich
+  tags:
+  - malat1
+  - intronic-fraction
+  - stress
+- id: osorio-cai-2021
+  name: Osorio & Cai 2021 mito reference values
+  kind: evidence
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Survey of mito fraction in 5,530,106 cells from 1,349 PanglaoDB datasets giving reference values for 121 mouse
+    and 44 human tissues
+  gain: human cells carry more mito RNA than mouse; the 5% cut-off misclassifies healthy vs low-quality cells in 13 of 44
+    human tissues (29.5%)
+  gain_source: independent
+  caveats: Tissue-level values; cultured cancer lines and treated cells are not covered.
+  url: https://github.com/dosorio/mtProportion
+  repo: dosorio/mtProportion
+  doi: 10.1093/bioinformatics/btaa751
+  pmid: '32840568'
+  cite_title: Systematic determination of the mitochondrial proportion in human and mice tissues for single-cell RNA-sequencing
+    data quality control
+  year: 2021
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#osorio-cai-2021
+  tags:
+  - mito
+  - reference-values
+  - survey
+- id: pipecomp
+  name: pipeComp
+  kind: tool
+  layer: core
+  categories:
+  - qc-benchmarks
+  - qc-metrics-thresholds
+  - doublets
+  side: neutral
+  tier: published-unbenchmarked
+  summary: R framework for benchmarking whole scRNA-seq pipelines, applied to filtering, doublet detection, normalisation,
+    feature selection and clustering on data with known identities
+  gain: stringent global MAD filtering removes subpopulations with extreme but healthy properties; accuracy plateaus and can
+    fall with stringency; recommends 5 MADs or 3 MADs on at least 2 metrics; doublet calls and MAD outliers barely overlap
+  gain_source: independent
+  caveats: Benchmarks used FACS-sorted mixtures and simulations, not treated or damaged samples.
+  url: https://github.com/plger/pipeComp
+  repo: plger/pipeComp
+  language: R
+  doi: 10.1186/s13059-020-02136-7
+  pmid: '32873325'
+  cite_title: pipeComp, a general framework for the evaluation of computational pipelines, reveals performant single cell
+    RNA-seq preprocessing tools
+  year: 2020
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#pipecomp
+  tags:
+  - benchmark
+  - filtering
+- id: dropletqc
+  name: DropletQC
+  kind: tool
+  layer: core
+  categories:
+  - damaged-cells
+  - cell-calling
+  side: both
+  tier: published-unbenchmarked
+  summary: Computes each barcode's nuclear fraction (share of intronic, unspliced reads) and separates empty droplets, damaged
+    cells and intact cells
+  recovers: a damage call that does not depend on mito fraction, so high-mito intact cells need not be removed
+  gain: after EmptyDrops, flagged cell-free droplets at 9.5% (mouse brain), 6.0% (Hodgkin), 4.0% (glioblastoma), 0.4% (PBMC)
+    and damaged cells at 14.0%, 5.2%, 9.8% and one cell; damaged share rose from 4.1% to 13.8% after cryopreservation and
+    rose with apoptosis in staurosporine-treated HEK293
+  gain_source: self-reported
+  requires:
+  - bam
+  caveats: 'Nuclear fraction varies by cell type and chemistry (defaults: mean nuclear fraction + 0.15 and UMI < 50% of the
+    population) and was tested on whole-cell data; removed 1,968 cells vs scQCenrich 1,185 on mouse brain (scQCenrich authors).'
+  url: https://github.com/powellgenomicslab/DropletQC
+  repo: powellgenomicslab/DropletQC
+  language: R
+  doi: 10.1186/s13059-021-02547-0
+  pmid: '34857027'
+  cite_title: 'DropletQC: improved identification of empty droplets and damaged cells in single-cell RNA-seq data'
+  year: 2021
+  verified: true
+  papers:
+  - pmid:31603610
+  - pmid:39574015
+  track: T2
+  review: 02-calling-qc-damaged#dropletqc
+  tags:
+  - nuclear-fraction
+  - intronic-fraction
+  - apoptosis
+- id: oflanagan-2019
+  name: O'Flanagan et al. 2019 cold protease and dead/dying cells
+  kind: evidence
+  layer: core
+  categories:
+  - damaged-cells
+  - cell-cycle-and-stress
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Compares collagenase at 37 C with cold active protease at 6 C on tumours and cell lines and profiles FACS-sorted
+    live, dying and dead TNF-alpha-treated cells
+  gain: dying (annexin V+) cells had median mito 3.13%, like live cells (3.4%), while dead cells had 29.9%; only 885 dying
+    and 1,280 dead cells were recovered against 3,000 targeted; 37 C collagenase induced a 512-gene core stress signature
+    (FOS, FOSB, ATF3, heat shock genes) that cold protease minimised
+  gain_source: independent
+  caveats: One lymphoblastoid line for the death experiment; the dying cells were induced with TNF-alpha, not a drug panel.
+  doi: 10.1186/s13059-019-1830-0
+  pmid: '31623682'
+  cite_title: Dissociation of solid tumor tissues with cold active protease for single-cell RNA-seq minimizes conserved collagenase-associated
+    stress responses
+  year: 2019
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#oflanagan-2019
+  tags:
+  - apoptosis
+  - dissociation
+  - cold-protease
+  - mito
+- id: van-den-brink-2017
+  name: van den Brink et al. 2017 dissociation-induced expression
+  kind: evidence
+  layer: core
+  categories:
+  - cell-cycle-and-stress
+  - damaged-cells
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Showed that enzymatic dissociation at 37 C induces immediate-early and heat-shock genes in subpopulations of cells,
+    which can then appear as a distinct state
+  gain: none (cautionary finding)
+  gain_source: none
+  caveats: Muscle stem cells; a stress cluster is a technical state to model or score, not necessarily a set of cells to remove.
+  doi: 10.1038/nmeth.4437
+  pmid: '28960196'
+  cite_title: Single-cell sequencing reveals dissociation-induced gene expression in tissue subpopulations
+  year: 2017
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#van-den-brink-2017
+  tags:
+  - dissociation
+  - stress-signature
+- id: condition-aware-qc-audit
+  name: Condition-aware QC audit (thresholds per cell type x batch, losses per condition)
+  kind: hypothesis
+  layer: core
+  categories:
+  - qc-metrics-thresholds
+  - screen-design
+  side: both
+  tier: hypothesis
+  summary: Set QC thresholds per cell type and batch (lane, plate), never per drug or dose, and tabulate cells removed by
+    each QC step for every condition before any differential test
+  recovers: cells of treatments that shift mito fraction or RNA content and would otherwise be removed at a treatment-dependent
+    rate
+  gain: none measured; drugs move the metrics QC relies on (paclitaxel and celecoxib repress global transcription per cell;
+    mito fraction tracks drug resistance across CCLE lines)
+  gain_source: none
+  requires:
+  - filtered-matrix
+  - multiple-conditions
+  - tag-counts
+  caveats: Per-condition adaptive thresholds would normalise away a toxic drug's damage; a global fixed threshold removes
+    cells at a rate the drug sets. Both bias pseudobulk comparisons; the loss table makes the bias visible.
+  papers:
+  - pmid:34159316
+  - pmid:40205439
+  - pmid:32873325
+  - pmid:36575523
+  track: T2
+  review: 02-calling-qc-damaged#condition-aware-qc-audit
+  tags:
+  - drug-screen
+  - pseudobulk
+  - audit
+- id: scdblfinder
+  name: scDblFinder
+  kind: tool
+  layer: core
+  categories:
+  - doublets
+  - multimodal
+  side: subtractive
+  tier: benchmarked-sota
+  summary: Classifies cells against artificial doublets generated from cluster pairs with gradient-boosted trees, using the
+    expected doublet rate as a prior
+  recovers: singlets that a cruder doublet filter or a high-UMI cut-off would discard; cleaner clusters
+  gain: 'Xi & Li 2021 protocol extension: highest mean AUPRC and AUROC on 16 real datasets with annotated doublets; singletCode
+    2024 replicated it as best on those datasets'
+  gain_source: independent
+  requires:
+  - filtered-matrix
+  caveats: 'Targets heterotypic doublets (its vignette reports low performance on homotypic ones); on lineage-barcoded ground-truth
+    singlets all detectors were weak (mean AUPRC 0.13-0.34) and scDblFinder lowest (singletCode 2024), so in single-line drug
+    screens most doublets are homotypic and need tags or genotypes. Run per capture lane (vignette: doublets only arise within
+    a capture). ATAC mode aggregates correlated peaks instead of selecting features; the authors compared it with AMULET on
+    three snATAC datasets and offer a Fisher combination of the two (F1000 v2). Demuxafy 2024 found scDblFinder and Scrublet
+    the detectors most affected by added ambient RNA. Call doublets before decontX or SoupX correction; ambient correction
+    first lowered detection (Meier 2026, preprint).'
+  url: https://bioconductor.org/packages/scDblFinder
+  repo: plger/scDblFinder
+  language: R
+  doi: 10.12688/f1000research.73600.2
+  pmid: '35814628'
+  cite_title: Doublet identification in single-cell sequencing data using scDblFinder
+  year: 2021
+  verified: true
+  papers:
+  - pmid:34382023
+  - pmid:38925122
+  - pmid:32873325
+  benchmarks: [xi-li-2021-doublet-protocol, neavin-2024-demuxafy-benchmark, zhang-2024-singletcode, ttoouli-2025-multiplets,
+    meier-2026-ambient-doublet-order]
+  track: T2
+  review: 02-calling-qc-damaged#scdblfinder
+  tags:
+  - best-practice
+  - heterotypic
+  - atac
+- id: xi-li-2021
+  name: Xi & Li 2021 doublet-detection benchmark
+  kind: evidence
+  layer: core
+  categories:
+  - doublets
+  - qc-benchmarks
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Benchmark of nine RNA-based doublet detectors on 16 real datasets with experimentally annotated doublets and 112
+    synthetic datasets
+  gain: DoubletFinder had the best detection accuracy and cxds the highest efficiency; no method was best everywhere; Solo had
+    the highest mean AUROC; Solo and hybrid were the only methods to beat the library-size and gene-count baselines on all 16
+    datasets, and doubletCells did not beat them on most; doublets made spurious Slingshot branches in simulations, removed
+    by every detector except doubletCells, and doublet removal by most methods improved DE gene and temporally DE gene recovery;
+    the protocol extension (STAR Protocols 2021) found scDblFinder best on mean AUPRC and AUROC
+  gain_source: independent
+  caveats: Annotated doublets come from hashing or genotypes, which miss same-sample homotypic doublets.
+  doi: 10.1016/j.cels.2020.11.008
+  pmid: '33338399'
+  cite_title: Benchmarking Computational Doublet-Detection Methods for Single-Cell RNA Sequencing Data
+  year: 2021
+  verified: true
+  papers:
+  - pmid:34382023
+  - pmid:41675246
+  track: T2
+  review: 02-calling-qc-damaged#xi-li-2021
+  tags:
+  - benchmark
+- id: singletcode-2024
+  name: singletCode (Zhang et al. 2024)
+  kind: evidence
+  layer: core
+  categories:
+  - doublets
+  - qc-benchmarks
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Uses lineage-tracing DNA barcodes to extract ground-truth singlets and evaluate RNA-based doublet detectors on
+    less heterogeneous data
+  gain: mean AUPRC 0.13-0.34 across DoubletFinder, scDblFinder, hybrid and Scrublet on barcoded datasets, with scDblFinder
+    lowest there, although it was best on the original non-barcoded benchmark data
+  gain_source: independent
+  caveats: Barcoded datasets are mostly cell lines and lineage experiments, close to a single-line drug screen but with their
+    own doublet structure.
+  doi: 10.1016/j.xgen.2024.100592
+  pmid: '38925122'
+  cite_title: Synthetic DNA barcodes identify singlets in scRNA-seq datasets and evaluate doublet algorithms
+  year: 2024
+  verified: true
+  track: T2
+  review: 02-calling-qc-damaged#singletcode-2024
+  tags:
+  - benchmark
+  - cell-lines
+  - homotypic

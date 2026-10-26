@@ -1,0 +1,12 @@
+# Publish-gate exemptions: <rule-id> <path-glob>, read from HEAD by publish-gate.sh.
+# The hub writes record cross-references in double square brackets around the
+# record id, which is also the syntax of the house-memory-link rule. `make check` fails on any [[x]] in these
+# files (tests/ aside) that is not a record id, so a real memory link still stops.
+house-memory-link  curation/records/*.yaml
+house-memory-link  data/catalog.json
+house-memory-link  data/catalog.tsv
+house-memory-link  docs/catalog.js
+house-memory-link  docs/review/*.md
+house-memory-link  README.md
+house-memory-link  skills/*/SKILL.md
+house-memory-link  tests/*

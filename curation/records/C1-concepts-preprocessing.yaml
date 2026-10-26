@@ -1,0 +1,687 @@
+# Track concepts-A: adjacent concept map for normalisation, feature selection, integration,
+# clustering and annotation. Hand-written layer; see docs/review/21-concepts-preprocessing.md.
+# Every PMID below was fetched from NCBI esummary on 2026-10-24.
+records:
+
+  # ------------------------------------------------------------------ concept nodes
+
+  - id: concept-normalisation
+    name: Normalisation and variance-stabilising transformation
+    kind: concept
+    layer: adjacent
+    categories: [normalisation]
+    side: neutral
+    tier: standard
+    summary: "Adjusting each cell's counts for its sampling efficiency (size factors) and transforming them so that variance is comparable across the expression range, usually by a shifted logarithm, Pearson residuals or a count model"
+    caveats: "Ahlmann-Eltze and Huber 2023 found the shifted logarithm of size-factor-scaled counts followed by PCA as good as or better than 21 alternatives; method choice matters less than the input it receives from QC."
+    doi: 10.1038/nmeth.4292
+    pmid: "28504683"
+    cite_title: "Normalizing single-cell RNA sequencing data: challenges and opportunities."
+    year: 2017
+    verified: true
+    papers: ["pmid:31217225", "pmid:37002403", "pmid:29121214"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "Each cell's fraction of zeros falls as its total UMIs rise, and under log-CPM that fraction drives the first principal component in most datasets, so cells kept with very low counts can separate on depth rather than biology (Townes 2019, PMID 31870412)"}
+      - {category: damaged-cells, effect: "Regressing out mito proportion or detected genes at the scaling step, instead of handling damaged cells at QC, nearly always increased correlation with those covariates and lowered clustering accuracy in pipeComp (PMID 32873325)"}
+      - {category: batch-and-plate-effects, effect: "Per-cell normalisation does not remove batch: C1 technical replicates of the same iPSC lines differed substantially and their read-to-molecule conversion varied with technical factors (Tung 2017, PMID 28045081)"}
+      - {category: cell-calling, effect: "The shifted log applied to CPM (L = 1e6) performed poorly against size-factor-scaled counts, and on one dataset the benchmark first excluded cells with size factors outside 0.1-10x the median, so the size-factor range left by cell calling and QC is part of the input (Ahlmann-Eltze 2023, PMID 37037999)"}
+    track: concepts-A
+    review: 21-concepts-preprocessing#concept-normalisation
+    tags: [concept, size-factors, transformation]
+
+  - id: concept-feature-selection
+    name: Feature selection (highly variable and deviant genes)
+    kind: concept
+    layer: adjacent
+    categories: [feature-selection]
+    side: neutral
+    tier: standard
+    summary: "Choosing the genes, usually 2,000 to 4,000, whose variation across cells exceeds technical expectation, which then define the PCA, the neighbour graph, clusters and integration"
+    caveats: "HVG lists computed on log-CPM pick up technical variability (Townes 2019); the number of genes and the method change integration and query mapping results (Zappia 2025)."
+    doi: 10.1186/s13059-021-02544-3
+    pmid: "34847932"
+    cite_title: "Feature selection revisited in the single-cell era."
+    year: 2021
+    verified: true
+    papers: ["pmid:29481632", "pmid:31217225", "pmid:37002403"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "Selecting highly variable genes on log-CPM of cells with very different depths produced false variability in dimension reduction, which deviance on raw counts avoided (Townes 2019, PMID 31870412); deviance also gave the best gene ranking in pipeComp (PMID 32873325)"}
+      - {category: cell-cycle-and-stress, effect: "Restricting integration to HVGs improved 74% of scIB comparisons but lowered cell-cycle and trajectory conservation relative to the full gene set, so HVG choice decides whether cycle and stress programmes survive (Luecken 2022, PMID 34949812)"}
+      - {category: batch-and-plate-effects, effect: "Batch-aware variants of scanpy HVG selection gave no consistent advantage for integration over the standard variants across ten datasets (Zappia 2025, PMID 40082610)"}
+    track: concepts-A
+    review: 21-concepts-preprocessing#concept-feature-selection
+    tags: [concept, hvg]
+
+  - id: concept-integration
+    name: Data integration and batch correction
+    kind: concept
+    layer: adjacent
+    categories: [integration]
+    side: neutral
+    tier: standard
+    summary: "Mapping cells from several samples, lanes, protocols or studies into a shared space so that technical batch differences are removed while cell identities and states are kept"
+    caveats: "Integration removes whatever is declared as batch, and over-correction removes biology; scIB found that scaling raised batch removal in 79% of comparisons while lowering bio-conservation in 72%."
+    doi: 10.1038/s41587-021-00895-7
+    pmid: "33941931"
+    cite_title: "Computational principles and challenges in single-cell data integration."
+    year: 2021
+    verified: true
+    papers: ["pmid:31217225", "pmid:37002403"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "A single mito cut-off (5%) misclassified healthy and low-quality cells in 29.5% of human tissues (Osorio and Cai 2021, PMID 32840568), so a global threshold can leave batches with different cell-type composition, the harder non-identical-cell-types scenario of Tran 2020 (PMID 31948481)"}
+      - {category: ambient-rna, effect: "Ambient load depends on sample preparation: neuronal ambient RNA was present in all glial types unless glia and neurons were separated before sequencing (Caglayan 2022, PMID 36240767), so contamination differs between batches and should be removed per sample before integrating"}
+      - {category: cell-cycle-and-stress, effect: "scIB scores cell-cycle conservation explicitly; methods returning corrected expression (Scanorama gene output, ComBat, MNN) conserved cell-cycle variance best, while embedding methods and HVG restriction lost more of it (Luecken 2022, PMID 34949812)"}
+      - {category: batch-and-plate-effects, effect: "The batch key chosen at QC (lane, plate, donor or study) defines what is removed; scIB found nested batch effects in atlas tasks and that scaling shifted every method toward batch removal at the cost of biology (Luecken 2022, PMID 34949812)"}
+    track: concepts-A
+    review: 21-concepts-preprocessing#concept-integration
+    tags: [concept, batch-correction]
+
+  - id: concept-clustering-annotation
+    name: Clustering and cell-type annotation
+    kind: concept
+    layer: adjacent
+    categories: [clustering-annotation]
+    side: neutral
+    tier: standard
+    summary: "Grouping cells into communities on a neighbour graph and naming them, by marker genes, by classifiers trained on references, or by mapping onto an annotated atlas"
+    caveats: "Cluster number depends on resolution and on every upstream step; automatic annotators lose accuracy for overlapping classes and deep annotation levels (Abdelaal 2019)."
+    doi: 10.1038/s41576-018-0088-9
+    pmid: "30617341"
+    cite_title: "Challenges in unsupervised clustering of single-cell RNA-seq data."
+    year: 2019
+    verified: true
+    papers: ["pmid:34031612", "pmid:31217225", "pmid:30271584"]
+    qc_links:
+      - {category: ambient-rna, effect: "Some previously annotated neuronal types in brain nuclei data were distinguished by ambient RNA, and the reported immature oligodendrocytes were glial nuclei contaminated with ambient RNA; after removal, rare committed OPCs appeared (Caglayan 2022, PMID 36240767)"}
+      - {category: doublets, effect: "Multiplets make up several percent of transcriptomes and confound downstream analysis (Scrublet, PMID 30954476); doublets of different types are likely misclassified, and distribution-based QC filters do not catch them (pipeComp, PMID 32873325)"}
+      - {category: qc-metrics-thresholds, effect: "Stringent filtering on the whole population discarded subpopulations with extreme but healthy properties such as high library size, and clustering accuracy plateaued or fell as stringency rose (pipeComp, PMID 32873325)"}
+      - {category: cell-cycle-and-stress, effect: "Enzymatic dissociation at 37 C induced immediate-early and heat-shock genes in subpopulations of cells (van den Brink 2017, PMID 28960196), and accounting for cell cycle revealed T-helper subpopulations that were otherwise undetectable (Buettner 2015, PMID 25599176)"}
+    track: concepts-A
+    review: 21-concepts-preprocessing#concept-clustering-annotation
+    tags: [concept, clustering, annotation]
+
+  # ------------------------------------------------------------------ normalisation anchors
+
+  - id: sctransform
+    name: sctransform
+    kind: tool
+    layer: adjacent
+    categories: [normalisation, feature-selection]
+    side: neutral
+    tier: benchmarked-sota
+    summary: "Regularised negative binomial regression of each gene on sequencing depth whose Pearson residuals replace log-normalised values and rank variable genes"
+    gain: "pipeComp: best separability of subpopulations and the strongest removal of library-size and detection-rate effects among normalisations tested; Ahlmann-Eltze 2023: Pearson residuals as good as, not better than, the shifted log"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Lause 2021 showed the original model is overspecified and its per-gene overdispersion biased; v2 (Choudhary and Satija 2022) changed the overdispersion handling. Its residual-based regression of covariates such as mito fraction inherits pipeComp's finding that regressing out covariates hurt clustering."
+    url: https://satijalab.org/seurat/articles/sctransform_vignette
+    repo: satijalab/sctransform
+    language: R
+    doi: 10.1186/s13059-019-1874-1
+    pmid: "31870423"
+    cite_title: "Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression."
+    year: 2019
+    verified: true
+    papers: ["pmid:35042561"]
+    benchmarks: [germain-2020-pipecomp, ahlmann-eltze-2023-transformation-benchmark, ge-2025-normalisation-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#sctransform
+    tags: [seurat, pearson-residuals]
+
+  - id: scran-pooling
+    name: scran pooled size factors (deconvolution)
+    kind: tool
+    layer: adjacent
+    categories: [normalisation]
+    side: neutral
+    tier: standard
+    summary: "Sums counts over pools of similar cells to estimate pool size factors, then deconvolves them into per-cell size factors that are robust to many zero counts"
+    gain: "More accurate cell-specific size factors than library size or bulk methods on simulations (self-reported); pipeComp rated most normalisations, scran included, as fair"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Pools are formed within quickCluster groups by default, so cells are pooled with similar cells; the default in the Bioconductor OSCA workflow. Applying QC filters within quickCluster groups in pipeComp removed almost no cells, unlike global filters."
+    url: https://bioconductor.org/packages/scran
+    repo: MarioniLab/scran
+    language: R
+    doi: 10.1186/s13059-016-0947-7
+    pmid: "27122128"
+    cite_title: "Pooling across cells to normalize single-cell RNA sequencing data with many zero counts."
+    year: 2016
+    verified: true
+    benchmarks: [germain-2020-pipecomp, ge-2025-normalisation-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#scran-pooling
+    tags: [bioconductor, size-factors]
+
+  - id: lause-2021
+    name: Analytic Pearson residuals
+    kind: method
+    layer: adjacent
+    categories: [normalisation, feature-selection]
+    side: neutral
+    tier: benchmarked-sota
+    summary: "Closed-form Pearson residuals of a Poisson or fixed-overdispersion negative binomial model with depth offset, used both as the normalised matrix and to rank variable genes"
+    gain: "Ahlmann-Eltze 2023: performed as well as the shifted log and better than latent-expression and factor-analysis transformations, and as well as exact residuals at lower cost; self-reported: strongly outperformed other methods at finding biologically variable genes"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Residuals are affine per gene, which may suit genes with a large dynamic range poorly (Ahlmann-Eltze 2023); negative control data in the paper were close to Poisson, so the choice of overdispersion matters little in UMI data."
+    url: https://scanpy.readthedocs.io/en/stable/tutorials/experimental/pearson_residuals.html
+    repo: scverse/scanpy
+    language: Python
+    doi: 10.1186/s13059-021-02451-7
+    pmid: "34488842"
+    cite_title: "Analytic Pearson residuals for normalization of single-cell RNA-seq UMI data."
+    year: 2021
+    verified: true
+    benchmarks: [ahlmann-eltze-2023-transformation-benchmark, zappia-2025-feature-selection-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#lause-2021
+    tags: [scanpy, pearson-residuals]
+
+  - id: ahlmann-eltze-2023
+    name: Ahlmann-Eltze and Huber 2023, comparison of transformations
+    kind: evidence
+    layer: adjacent
+    categories: [normalisation]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 22 transformations from four families (delta method, model residuals, latent expression, factor analysis) on simulated and real data, scored by recovery of each cell's nearest neighbours"
+    gain: "The shifted logarithm log(y/s + 1) followed by PCA performed as well as or better than the more sophisticated alternatives; Pearson residuals performed similarly well; shifted log on CPM performed poorly"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Scores k-NN recovery, not marker detection or DE; on one dataset cells with size factors outside 0.1-10x the median were removed before benchmarking. Advises against CPM input and against rescaling log values per cell."
+    url: https://doi.org/10.1038/s41592-023-01814-1
+    repo: const-ae/transformGamPoi
+    language: R
+    doi: 10.1038/s41592-023-01814-1
+    pmid: "37037999"
+    cite_title: "Comparison of transformations for single-cell RNA-seq data."
+    year: 2023
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#ahlmann-eltze-2023
+    tags: [benchmark, transformation, shifted-log]
+
+  # ------------------------------------------------------------------ feature selection anchors
+
+  - id: townes-2019
+    name: scry deviance feature selection and GLM-PCA
+    kind: tool
+    layer: adjacent
+    categories: [feature-selection, normalisation]
+    side: neutral
+    tier: benchmarked-sota
+    summary: "Ranks genes by binomial or multinomial deviance on raw UMI counts and reduces dimension with GLM-PCA, avoiding log-normalisation of counts"
+    gain: "pipeComp: deviance gave the best gene ranking for feature selection (independent); self-reported: outperformed log-CPM plus HVG in ground-truth clustering"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Shows that the fraction of zeros per cell drives PC1 under log-CPM; GLM-PCA is slower than PCA. Zappia 2025 found Seurat-VST HVGs top-ranked for integration; scry's rank there not extracted."
+    url: https://bioconductor.org/packages/scry
+    language: R
+    doi: 10.1186/s13059-019-1861-6
+    pmid: "31870412"
+    cite_title: "Feature selection and dimension reduction for single-cell RNA-Seq based on a multinomial model."
+    year: 2019
+    verified: true
+    papers: ["pmid:32698904"]
+    benchmarks: [germain-2020-pipecomp, zappia-2025-feature-selection-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#townes-2019
+    tags: [deviance, glm-pca, bioconductor]
+
+  - id: zappia-2025
+    name: Zappia et al. 2025, feature selection for integration and querying
+    kind: evidence
+    layer: adjacent
+    categories: [feature-selection, integration]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 24 feature selection methods and variants over ten datasets, scoring integration, query mapping, label transfer and detection of unseen populations with scVI, scANVI and Symphony"
+    gain: "About 2,000 features worked well; Seurat-VST (scanpy seurat_v3) highly variable genes ranked top; no consistent advantage for batch-aware scanpy variants; scANVI improved every metric category over scVI for the same features"
+    gain_source: independent
+    caveats: "From the scIB group, so not independent of scIB; 1,700 feature sets and over 6,000 integration runs; Symphony failed to detect unseen populations that scVI and scANVI separated."
+    url: https://doi.org/10.1038/s41592-025-02624-3
+    doi: 10.1038/s41592-025-02624-3
+    pmid: "40082610"
+    cite_title: "Feature selection methods affect the performance of scRNA-seq data integration and querying."
+    year: 2025
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#zappia-2025
+    tags: [benchmark, hvg, atlas]
+
+  # ------------------------------------------------------------------ integration anchors
+
+  - id: harmony
+    name: Harmony
+    kind: tool
+    layer: adjacent
+    categories: [integration]
+    side: subtractive
+    tier: benchmarked-sota
+    summary: "Iteratively clusters cells in PCA space and applies cluster-specific linear corrections that maximise batch diversity within clusters, returning a corrected embedding"
+    gain: "Tran 2020: recommended first among 14 methods (with LIGER and Seurat 3) for its accuracy and much shorter runtime; scIB: among the best four on the human immune task and effective on scATAC-seq"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Returns an embedding, not corrected counts; scIB found it weaker than scANVI, Scanorama and scVI on complex atlas tasks."
+    url: https://portals.broadinstitute.org/harmony
+    repo: immunogenomics/harmony
+    language: multiple
+    doi: 10.1038/s41592-019-0619-0
+    pmid: "31740819"
+    cite_title: "Fast, sensitive and accurate integration of single-cell data with Harmony."
+    year: 2019
+    verified: true
+    benchmarks: [tran-2020-batch-benchmark, luecken-2022-scib-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#harmony
+    tags: [embedding, linear]
+
+  - id: scvi-tools
+    name: scvi-tools (scVI, scANVI)
+    kind: tool
+    layer: adjacent
+    categories: [integration, clustering-annotation]
+    side: subtractive
+    tier: benchmarked-sota
+    summary: "Variational autoencoders on raw counts with batch as a covariate (scVI), and a semi-supervised variant that uses cell labels (scANVI), giving a batch-corrected latent space and label transfer"
+    gain: "scIB: scANVI, Scanorama, scVI and scGen performed best overall, especially on complex atlas tasks"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Primary paper is scVI (Lopez 2018) and scANVI (Xu 2021) is listed in papers, both independent of scIB. scIB shares an author (F. J. Theis) with the scvi-tools library paper (Gayoso 2022), not with the scVI paper it evaluated; Zappia 2025 shares him too. totalVI, from the same library, has its own record [[totalvi]]. Needs raw counts and benefits from a GPU."
+    url: https://scvi-tools.org
+    repo: scverse/scvi-tools
+    language: Python
+    doi: 10.1038/s41592-018-0229-2
+    pmid: "30504886"
+    cite_title: "Deep generative modeling for single-cell transcriptomics."
+    year: 2018
+    verified: true
+    papers: ["pmid:35132262", "pmid:33491336"]
+    benchmarks: [luecken-2022-scib-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#scvi-tools
+    tags: [deep-learning, gpu, label-transfer]
+
+  - id: scanorama
+    name: Scanorama
+    kind: tool
+    layer: adjacent
+    categories: [integration]
+    side: subtractive
+    tier: benchmarked-sota
+    summary: "Finds mutual nearest neighbours across all datasets at once in a reduced space and stitches them panorama-style, returning a corrected embedding and corrected expression"
+    gain: "scIB: among the four best methods overall; its corrected-expression output conserved cell-cycle variance and HVGs best together with ComBat and MNN"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Also tested by Tran 2020, which did not place it among its three recommended methods."
+    url: https://github.com/brianhie/scanorama
+    repo: brianhie/scanorama
+    language: Python
+    doi: 10.1038/s41587-019-0113-3
+    pmid: "31061482"
+    cite_title: "Efficient integration of heterogeneous single-cell transcriptomes using Scanorama."
+    year: 2019
+    verified: true
+    benchmarks: [luecken-2022-scib-benchmark, tran-2020-batch-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#scanorama
+    tags: [mnn, corrected-expression]
+
+  - id: seurat-integration
+    name: Seurat anchor integration (CCA and RPCA)
+    kind: tool
+    layer: adjacent
+    categories: [integration, clustering-annotation]
+    side: subtractive
+    tier: benchmarked-sota
+    summary: "Identifies anchor pairs of mutual nearest neighbours in a shared canonical correlation (or reciprocal PCA) space and uses them to correct expression or transfer labels between datasets"
+    gain: "Tran 2020: Seurat 3 among the three recommended methods of 14 (with Harmony and LIGER)"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "scIB ranked Seurat v3 CCA and RPCA below scANVI, Scanorama, scVI and scGen on atlas tasks; the same anchor framework underlies Azimuth label transfer."
+    url: https://satijalab.org/seurat/articles/integration_introduction
+    repo: satijalab/seurat
+    language: R
+    doi: 10.1016/j.cell.2019.05.031
+    pmid: "31178118"
+    cite_title: "Comprehensive Integration of Single-Cell Data."
+    year: 2019
+    verified: true
+    benchmarks: [tran-2020-batch-benchmark, luecken-2022-scib-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#seurat-integration
+    tags: [seurat, anchors, cca]
+
+  - id: fastmnn
+    name: MNN correction and fastMNN (batchelor)
+    kind: tool
+    layer: adjacent
+    categories: [integration]
+    side: subtractive
+    tier: benchmarked
+    summary: "Corrects batches by pairing mutual nearest neighbour cells across batches and subtracting locally estimated batch vectors, in expression space (MNN) or PCA space (fastMNN)"
+    gain: "scIB: FastMNN embedding among the best four on the human immune task; MNN conserved cell-cycle variance well; not among the overall top methods in scIB or Tran 2020"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Assumes at least one shared population between batches; MNN in full expression space is slow, which fastMNN addresses."
+    url: https://bioconductor.org/packages/batchelor
+    repo: LTLA/batchelor
+    language: R
+    doi: 10.1038/nbt.4091
+    pmid: "29608177"
+    cite_title: "Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors."
+    year: 2018
+    verified: true
+    benchmarks: [tran-2020-batch-benchmark, luecken-2022-scib-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#fastmnn
+    tags: [mnn, bioconductor]
+
+  - id: bbknn
+    name: BBKNN
+    kind: tool
+    layer: adjacent
+    categories: [integration, clustering-annotation]
+    side: subtractive
+    tier: benchmarked
+    summary: "Builds the neighbour graph by taking each cell's nearest neighbours separately within every batch, so clustering and UMAP run on a batch-balanced graph without changing expression"
+    gain: "Fast and graph-only; evaluated in Tran 2020 and scIB without being among the recommended or top-ranked methods"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Corrects only the graph, so downstream steps that read expression or PCA still see the batch effect."
+    url: https://github.com/Teichlab/bbknn
+    repo: Teichlab/bbknn
+    language: Python
+    doi: 10.1093/bioinformatics/btz625
+    pmid: "31400197"
+    cite_title: "BBKNN: fast batch alignment of single cell transcriptomes."
+    year: 2020
+    verified: true
+    benchmarks: [tran-2020-batch-benchmark, luecken-2022-scib-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#bbknn
+    tags: [graph, scanpy]
+
+  - id: luecken-2022-scib
+    name: Luecken et al. 2022, scIB atlas-level integration benchmark
+    kind: evidence
+    layer: adjacent
+    categories: [integration, feature-selection]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 16 integration methods in 68 method and preprocessing combinations on 13 atlas-level tasks (85 batches, over 1.2 million cells) with 14 metrics for batch removal and biological conservation"
+    gain: "scANVI, Scanorama, scVI and scGen best overall; HVG selection improved 74% of comparisons; scaling raised batch removal in 79% and lowered bio-conservation in 72%; cell-cycle and trajectory conservation favoured the full gene set"
+    gain_source: independent
+    caveats: "40/60 weighting of batch removal against bio-conservation is a choice; label-based metrics depend on the annotation they are given."
+    url: https://github.com/theislab/scib
+    repo: theislab/scib
+    language: Python
+    doi: 10.1038/s41592-021-01336-8
+    pmid: "34949812"
+    cite_title: "Benchmarking atlas-level data integration in single-cell genomics."
+    year: 2022
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#luecken-2022-scib
+    tags: [benchmark, atlas, metrics]
+
+  - id: tran-2020
+    name: Tran et al. 2020, batch-effect correction benchmark
+    kind: evidence
+    layer: adjacent
+    categories: [integration]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 14 batch-correction methods on ten datasets in five scenarios (identical cell types across technologies, non-identical cell types, multiple batches, big data, simulated DE) with kBET, LISI, ASW and ARI"
+    gain: "Harmony, LIGER and Seurat 3 recommended; Harmony first because of its much shorter runtime"
+    gain_source: independent
+    caveats: "Simpler tasks than scIB; scVI was not among the methods tested."
+    url: https://doi.org/10.1186/s13059-019-1850-9
+    doi: 10.1186/s13059-019-1850-9
+    pmid: "31948481"
+    cite_title: "A benchmark of batch-effect correction methods for single-cell RNA sequencing data."
+    year: 2020
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#tran-2020
+    tags: [benchmark]
+
+  # ------------------------------------------------------------------ clustering and annotation anchors
+
+  - id: leiden
+    name: Leiden community detection
+    kind: tool
+    layer: adjacent
+    categories: [clustering-annotation]
+    side: neutral
+    tier: standard
+    summary: "Graph community detection that refines Louvain partitions so every community is guaranteed to be internally connected; the default clustering on the kNN graph in scanpy and an option in Seurat"
+    gain: "In the authors' tests up to 25% of Louvain communities were badly connected and up to 16% disconnected; Leiden guarantees connected communities and ran faster (self-reported, benchmark and real-world networks, not single-cell data)"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Resolution sets the number of clusters; no independent single-cell benchmark of Leiden against Louvain was found."
+    url: https://leidenalg.readthedocs.io
+    repo: vtraag/leidenalg
+    language: Python
+    doi: 10.1038/s41598-019-41695-z
+    pmid: "30914743"
+    cite_title: "From Louvain to Leiden: guaranteeing well-connected communities."
+    year: 2019
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#leiden
+    tags: [graph-clustering, scanpy]
+
+  - id: celltypist
+    name: CellTypist
+    kind: tool
+    layer: adjacent
+    categories: [clustering-annotation]
+    side: neutral
+    tier: standard
+    summary: "Logistic regression classifiers trained on curated immune and tissue references that label each cell, with optional majority voting over over-clustered neighbourhoods"
+    gain_source: none
+    requires: [filtered-matrix, reference]
+    caveats: "Labels are limited to the model's training types; no independent peer-reviewed benchmark including it was found. Paper is a cross-tissue immune atlas, so the human immune models are the best-supported ones."
+    url: https://www.celltypist.org
+    repo: Teichlab/celltypist
+    language: Python
+    doi: 10.1126/science.abl5197
+    pmid: "35549406"
+    cite_title: "Cross-tissue immune cell analysis reveals tissue-specific features in humans."
+    year: 2022
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#celltypist
+    tags: [label-transfer, immune, reference]
+
+  - id: singler
+    name: SingleR
+    kind: tool
+    layer: adjacent
+    categories: [clustering-annotation]
+    side: neutral
+    tier: benchmarked
+    summary: "Labels each cell by Spearman correlation with bulk or single-cell reference profiles over marker genes, iteratively fine-tuning among the top-scoring labels"
+    gain: "Abdelaal 2019: among the top five of 22 classifiers at the deeper brain annotation and in unaligned pancreas inter-dataset tests, with almost no unlabelled cells; SVM was best overall"
+    gain_source: independent
+    requires: [filtered-matrix, reference]
+    caveats: "No rejection option in the version tested; slowest method in Abdelaal 2019 (over 39 h on Zheng 68K with SingleR 0.2.2; the later Bioconductor reimplementation is much faster)."
+    url: https://bioconductor.org/packages/SingleR
+    repo: LTLA/SingleR
+    language: R
+    doi: 10.1038/s41590-018-0276-y
+    pmid: "30643263"
+    cite_title: "Reference-based analysis of lung single-cell sequencing reveals a transitional profibrotic macrophage."
+    year: 2019
+    verified: true
+    benchmarks: [abdelaal-2019-annotation-benchmark]
+    track: concepts-A
+    review: 21-concepts-preprocessing#singler
+    tags: [reference, correlation, bioconductor]
+
+  - id: azimuth
+    name: Azimuth reference mapping
+    kind: tool
+    layer: adjacent
+    categories: [clustering-annotation, integration]
+    side: neutral
+    tier: standard
+    summary: "Maps query cells onto annotated Seurat references (PBMC, lung, kidney and others) by supervised PCA and anchors, returning labels at several levels with prediction and mapping scores"
+    gain_source: none
+    requires: [filtered-matrix, reference]
+    caveats: "Labels and resolution are those of the reference; query-only states map to the nearest reference type, so the mapping score should be checked. No independent peer-reviewed benchmark found."
+    url: https://azimuth.hubmapconsortium.org
+    repo: satijalab/azimuth
+    language: multiple
+    doi: 10.1016/j.cell.2021.04.048
+    pmid: "34062119"
+    cite_title: "Integrated analysis of multimodal single-cell data."
+    year: 2021
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#azimuth
+    tags: [reference-mapping, seurat, web]
+
+  - id: abdelaal-2019
+    name: Abdelaal et al. 2019, automatic cell identification benchmark
+    kind: evidence
+    layer: adjacent
+    categories: [clustering-annotation]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 22 supervised cell-type classifiers on 27 datasets for intra-dataset and inter-dataset prediction, feature sensitivity, cell number and annotation depth"
+    gain: "General-purpose linear SVM best overall; most classifiers did well but lost accuracy with overlapping classes and deep annotation; with stratified downsampling to under 500 cells most classifiers kept high performance"
+    gain_source: independent
+    requires: [reference]
+    caveats: "Predates CellTypist and Azimuth; the SVM-with-rejection result shows that accuracy can be bought with unlabelled cells (28.9% unlabelled at full size)."
+    url: https://github.com/tabdelaal/scRNAseq_Benchmark
+    repo: tabdelaal/scRNAseq_Benchmark
+    language: multiple
+    doi: 10.1186/s13059-019-1795-z
+    pmid: "31500660"
+    cite_title: "A comparison of automatic cell identification methods for single-cell RNA sequencing data."
+    year: 2019
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#abdelaal-2019
+    tags: [benchmark, classifier]
+
+  # ------------------------------------------------------------------ added from scView's catalog (2026-10-25)
+
+  - id: redeconv
+    name: ReDeconv and CLTS normalisation (transcriptome size)
+    kind: tool
+    layer: adjacent
+    categories: [normalisation, de-pseudobulk]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Normalises scRNA-seq by Count based on Linearized Transcriptome Size (CLTS), keeping the differences in total transcript content between cell types that per-cell scaling to 10,000 counts removes, and uses the result for bulk deconvolution"
+    gain: "Corrected DE genes that CP10K normalisation misidentified between cell types, with orthogonal validation, and improved deconvolution accuracy, notably for rare cell types"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Gains are the authors' own. The point stands on its own: transcriptome size differs between cell types, often several-fold, so per-cell scaling before cross-type DE turns size into expression differences."
+    url: https://github.com/jyyulab/redeconv
+    repo: jyyulab/redeconv
+    language: Python
+    doi: 10.1038/s41467-025-56623-1
+    pmid: "39893178"
+    cite_title: "Transcriptome size matters for single-cell RNA-seq normalization and bulk deconvolution."
+    year: 2025
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#redeconv
+    tags: [transcriptome-size, cross-cell-type-de, deconvolution]
+
+  - id: ge-2025
+    name: Ge et al. 2025, normalisation benchmark
+    kind: evidence
+    layer: adjacent
+    categories: [normalisation]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Benchmark of six normalisation methods (Seurat log, LIGER, Dino, SCnorm, sctransform, scran) on seven real and four simulated datasets, scored on clustering, DE and memory and run time"
+    gain: "Dino best for clustering 10x and large datasets; sctransform strong on full-length protocols; SCnorm suited to small datasets but averaged over 200 GB peak memory"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Small benchmark; it describes the Seurat default as log10(x + 1), which is not what LogNormalize does, and counts LIGER (an integration method) as a normaliser. Weigh below Ahlmann-Eltze and Huber 2023."
+    url: https://doi.org/10.1371/journal.pone.0335102
+    doi: 10.1371/journal.pone.0335102
+    pmid: "41411311"
+    cite_title: "Single-cell RNA-seq data normalization: A benchmarking study."
+    year: 2025
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#ge-2025
+    tags: [benchmark, normalisation]
+
+  - id: tn-test
+    name: TN test (valid post-clustering differential analysis)
+    kind: tool
+    layer: adjacent
+    categories: [clustering-annotation, de-pseudobulk]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Truncated-normal test for marker genes between clusters that conditions on the clustering, so that the separation the clustering forced does not produce artificially low p-values"
+    gain: "Showed that reusing the same cells for clustering and DE gives artificially low p-values and false discoveries, and corrected them"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Research code (notebooks), not maintained since 2019; the double-dipping problem it names is the lasting contribution."
+    url: https://github.com/jessemzhang/tn_test
+    repo: jessemzhang/tn_test
+    language: Python
+    doi: 10.1016/j.cels.2019.07.012
+    pmid: "31521605"
+    cite_title: "Valid Post-clustering Differential Analysis for Single-Cell RNA-Seq."
+    year: 2019
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#tn-test
+    tags: [double-dipping, marker-genes, selective-inference]
+
+  - id: clusterde
+    name: ClusterDE
+    kind: tool
+    layer: adjacent
+    categories: [clustering-annotation, de-pseudobulk]
+    side: subtractive
+    tier: published-unbenchmarked
+    summary: "Removes false-positive cluster markers caused by double dipping by repeating clustering and DE on a synthetic null dataset that matches the real gene means, variances and gene-gene rank correlations but holds one population"
+    gain: "Flags markers and clusters that over-clustering creates from one homogeneous population"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Tests whether two clusters are distinct, not whether they are biologically meaningful; cite the published package paper rather than its preprint and Research Square versions."
+    url: https://jsb-ucla.github.io/ClusterDE/
+    repo: JSB-UCLA/ClusterDE
+    language: R
+    doi: 10.1177/15578666251383562
+    pmid: "41060830"
+    cite_title: "ClusterDE: A Statistical Software Package for Removing Double-Dipping Bias in Post-Clustering Differential Expression Analysis."
+    year: 2026
+    verified: true
+    papers: ["pmid:37546812"]
+    track: concepts-A
+    review: 21-concepts-preprocessing#clusterde
+    tags: [double-dipping, marker-genes, synthetic-null, over-clustering]
+
+  - id: chari-pachter-2023
+    name: Chari & Pachter 2023, distortion in 2D embeddings
+    kind: evidence
+    layer: adjacent
+    categories: [clustering-annotation]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Showed that reducing single-cell data from hundreds or thousands of dimensions to two inevitably distorts it, and that t-SNE and UMAP views are unreliable for quantitative or exploratory biological conclusions"
+    gain_source: none
+    requires: [filtered-matrix]
+    caveats: "An argument against reading distances and cluster sizes off 2D embeddings, not a ban on using them to look; an erratum was published in 2025 (PLoS Comput Biol 21:e1013655)."
+    url: https://doi.org/10.1371/journal.pcbi.1011288
+    doi: 10.1371/journal.pcbi.1011288
+    pmid: "37590228"
+    cite_title: "The specious art of single-cell genomics."
+    year: 2023
+    verified: true
+    track: concepts-A
+    review: 21-concepts-preprocessing#chari-pachter-2023
+    tags: [umap, tsne, embedding-distortion]

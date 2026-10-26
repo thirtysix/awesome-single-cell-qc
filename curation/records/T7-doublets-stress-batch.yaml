@@ -1,0 +1,1492 @@
+# Track QC-sweep-B: doublets and multiplets, cell cycle and stress signatures, batch, lane and plate effects.
+# Hand-written layer; see docs/review/12-doublets-stress-batch.md.
+records:
+
+# ------------------------------------------------------------------------------------------- doublets, RNA
+- id: doubletfinder
+  name: DoubletFinder
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked-sota
+  summary: Scores each cell by the fraction of artificial doublets (averaged random cell pairs) among its nearest neighbours
+    in PC space, with a parameter sweep (pK) chosen from the data
+  recovers: cleaner clusters and DE results; singlets otherwise lost to a high-UMI cap
+  gain: 'Xi & Li 2021: highest mean AUPRC (0.537) on 16 real datasets with annotated doublets, top method on the most datasets
+    and across simulated settings, among the most robust at removing spurious clusters; Ttoouli 2025: among the top three
+    by clustering quality after removal'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: 'Slower than cxds or Scrublet and less stable across subsamples (Xi & Li 2021); misclassified more singlets than
+    scds, scDblFinder or Scrublet in pooled PBMC data (Demuxafy 2024); mean AUPRC 0.13-0.34 for all detectors on lineage-barcoded
+    cell-line data (singletCode 2024); targets heterotypic doublets and needs the expected doublet rate as input.'
+  url: https://github.com/chris-mcginnis-ucsf/DoubletFinder
+  repo: chris-mcginnis-ucsf/DoubletFinder
+  language: R
+  doi: 10.1016/j.cels.2019.03.003
+  pmid: '30954475'
+  cite_title: 'DoubletFinder: Doublet Detection in Single-Cell RNA Sequencing Data Using Artificial Nearest Neighbors'
+  year: 2019
+  verified: true
+  benchmarks: [xi-li-2021-doublet-benchmark, xi-li-2021-doublet-protocol, neavin-2024-demuxafy-benchmark, zhang-2024-singletcode,
+    ttoouli-2025-multiplets]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#doubletfinder
+  tags: [seurat, artificial-doublets, knn]
+
+- id: scrublet
+  name: Scrublet
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked-sota
+  summary: Simulates doublets from the data and scores each barcode with a nearest-neighbour classifier, without needing
+    clusters; the default doublet step in scanpy and many Python pipelines
+  recovers: singlets that a high-UMI cap would discard; cleaner clusters
+  gain: 'Ttoouli 2025 (hashing truth): most accurate tool by AUROC; Demuxafy 2024: with scDblFinder, classified the most
+    doublets correctly in pools of 16 donors or fewer; Xi & Li 2021: strong in simulations and one of two methods whose HVGs
+    beat the negative control at all doublet rates'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: Threshold is set between two modes of the simulated score distribution, which are often not bimodal; among the
+    detectors most affected by simulated ambient RNA (Demuxafy 2024); still missed most hashing multiplets (Ttoouli 2025).
+  url: https://github.com/swolock/scrublet
+  repo: swolock/scrublet
+  language: Python
+  doi: 10.1016/j.cels.2018.11.005
+  pmid: '30954476'
+  cite_title: 'Scrublet: Computational Identification of Cell Doublets in Single-Cell Transcriptomic Data'
+  year: 2019
+  verified: true
+  benchmarks: [xi-li-2021-doublet-benchmark, xi-li-2021-doublet-protocol, neavin-2024-demuxafy-benchmark, zhang-2024-singletcode,
+    ttoouli-2025-multiplets]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#scrublet
+  tags: [scanpy, artificial-doublets, knn]
+
+- id: scds
+  name: scds (cxds, bcds, hybrid)
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked-sota
+  summary: 'Two doublet scores and their combination: cxds scores unlikely co-expression of gene pairs on binarised counts,
+    bcds trains gradient boosting against artificial doublets, hybrid averages them'
+  recovers: fast doublet scoring for large datasets without clustering
+  gain: 'Demuxafy 2024: scds, scDblFinder and Scrublet the top doublet detectors by MCC and balanced accuracy; Xi & Li 2021:
+    cxds fastest and most resource-efficient, hybrid one of only two methods to beat the library-size and gene-count baselines
+    on all 16 datasets'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: cxds alone has medium accuracy and cxds, bcds and hybrid were unstable at removing spurious clusters (Xi & Li 2021);
+    bcds found the most unique multiplets but had the lowest accuracy against hashing (Ttoouli 2025).
+  url: https://bioconductor.org/packages/scds
+  repo: kostkalab/scds
+  language: R
+  doi: 10.1093/bioinformatics/btz698
+  pmid: '31501871'
+  cite_title: 'scds: computational annotation of doublets in single-cell RNA sequencing data'
+  year: 2020
+  verified: true
+  benchmarks: [xi-li-2021-doublet-benchmark, xi-li-2021-doublet-protocol, neavin-2024-demuxafy-benchmark, zhang-2024-singletcode,
+    ttoouli-2025-multiplets]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#scds
+  tags: [bioconductor, co-expression, fast]
+
+- id: solo
+  name: Solo
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked-sota
+  summary: Embeds cells with a variational autoencoder and trains a classifier head to separate simulated doublets from observed
+    cells; now maintained inside scvi-tools
+  recovers: singlets and cleaner clusters
+  gain: 'Xi & Li 2021: highest mean AUROC on 16 real datasets, beat both baselines on every dataset, highest precision and
+    TNR (with DoubletFinder) and recall (with hybrid) at matched doublet numbers; Demuxafy 2024: better than scds in pools
+    of more than 16 donors'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: Slowest and most memory-hungry detector in Demuxafy (median 13 h per ~20,000-cell pool) and the only one whose
+    run time did not scale linearly (Xi & Li 2021); GPU preferred; the standalone calico/solo repository is archived in favour
+    of scvi-tools.
+  url: https://docs.scvi-tools.org
+  repo: calico/solo
+  language: Python
+  doi: 10.1016/j.cels.2020.05.010
+  pmid: '32592658'
+  cite_title: 'Solo: Doublet Identification in Single-Cell RNA-Seq via Semi-Supervised Deep Learning'
+  year: 2020
+  verified: true
+  benchmarks: [xi-li-2021-doublet-benchmark, neavin-2024-demuxafy-benchmark]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#solo
+  tags: [deep-learning, scvi-tools, gpu]
+
+- id: doubletdetection
+  name: DoubletDetection
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked-sota
+  summary: Repeatedly adds synthetic doublets, clusters with PhenoGraph or Louvain and scores cells by how often they fall
+    in doublet-rich clusters, giving p-value based calls
+  recovers: singlets and cleaner clusters
+  gain: 'Demuxafy 2024: lowest share of wrongly classified droplets among doublet detectors (about 1% at 2 donors, about
+    3% at 16 or more); Xi & Li 2021: with DoubletFinder the most robust at restoring the correct number of clusters; Ttoouli
+    2025: among the top three by clustering quality'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: No peer-reviewed paper (cited by Zenodo DOI); failed on one of 16 datasets and among the slower methods (Xi & Li
+    2021).
+  url: https://github.com/JonathanShor/DoubletDetection
+  repo: JonathanShor/DoubletDetection
+  language: Python
+  doi: 10.5281/zenodo.2678041
+  cite_title: 'JonathanShor/DoubletDetection: doubletdetection v4.3.0.post1'
+  year: 2019
+  verified: true
+  benchmarks: [xi-li-2021-doublet-benchmark, xi-li-2021-doublet-protocol, neavin-2024-demuxafy-benchmark, ttoouli-2025-multiplets]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#doubletdetection
+  tags: [clustering, zenodo]
+
+- id: doubletcells
+  name: doubletCells / computeDoubletDensity (scran, scDblFinder)
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked
+  summary: Scores each cell by the local density of simulated doublets relative to real cells in a reduced space; moved from
+    scran's doubletCells to scDblFinder's computeDoubletDensity
+  gain: 'Xi & Li 2021: the only method that did not beat the library-size and gene-count baselines on a majority of the 16
+    datasets, and the only one that left spurious trajectory branches'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: Superseded by scDblFinder's classifier in the same package; retained in OSCA as a cluster-free score.
+  url: https://bioconductor.org/packages/scDblFinder
+  repo: plger/scDblFinder
+  language: R
+  doi: 10.12688/f1000research.9501.2
+  pmid: '27909575'
+  cite_title: A step-by-step workflow for low-level analysis of single-cell RNA-seq data with Bioconductor
+  year: 2016
+  verified: true
+  benchmarks: [xi-li-2021-doublet-benchmark, xi-li-2021-doublet-protocol, ttoouli-2025-multiplets]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#doubletcells
+  tags: [bioconductor, osca]
+
+- id: vaeda
+  name: vaeda
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Combines a variational autoencoder with positive-unlabeled learning to give doublet scores and binary calls
+  gain: competitive with seven existing methods on the 16 Xi & Li benchmark datasets and ahead of the other Python-based
+    methods (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: From the scds authors; not yet in an independent benchmark.
+  url: https://github.com/kostkalab/vaeda
+  repo: kostkalab/vaeda
+  language: Python
+  doi: 10.1093/bioinformatics/btac720
+  pmid: '36342203'
+  cite_title: Vaeda computationally annotates doublets in single-cell RNA sequencing data
+  year: 2023
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#vaeda
+  tags: [deep-learning, pu-learning]
+
+- id: chord
+  name: Chord
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: benchmarked
+  summary: Ensemble that trains a gradient-boosting model on the scores of several doublet detectors (by default DoubletFinder,
+    scds and others) against simulated doublets
+  gain: higher accuracy and stability than its component methods on real and synthetic data (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: 'Independent tests did not confirm the ensemble gain: Demuxafy (scds plus DoubletFinder intersection) outperformed
+    Chord in pools of 8 or more donors, with Chord making more false singlet and false doublet calls; on singletCode barcoded
+    data the ensembles (hybrid, Chord) did not always beat their components.'
+  url: https://github.com/13308204545/Chord
+  repo: 13308204545/Chord
+  language: R
+  doi: 10.1038/s42003-022-03476-9
+  pmid: '35637301'
+  cite_title: 'Chord: an ensemble machine learning algorithm to identify doublets in single-cell RNA sequencing data'
+  year: 2022
+  verified: true
+  benchmarks: [neavin-2024-demuxafy-benchmark, zhang-2024-singletcode]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#chord
+  tags: [ensemble]
+
+- id: socube
+  name: SoCube
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Deep-learning doublet detector that embeds gene expression into a 3D composite feature cube and classifies with
+    an ensemble of multi-kernel CNNs
+  gain: better performance than existing detectors on benchmark datasets and downstream tasks (self-reported, no single
+    headline number in the abstract)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  url: https://github.com/idrblab/socube
+  repo: idrblab/socube
+  language: Python
+  doi: 10.1093/bib/bbad104
+  pmid: '36941114'
+  cite_title: 'SoCube: an innovative end-to-end doublet detection algorithm for analyzing scRNA-seq data'
+  year: 2023
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#socube
+  tags: [deep-learning, cnn]
+
+- id: rado
+  name: RADO
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Doublet detector trained to maximise the area under the precision-recall curve on simulated doublets, for RNA
+    and ATAC data
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Preprint only (bioRxiv 2023); no PubMed record found.
+  url: https://github.com/poseidonchan/RADO
+  repo: poseidonchan/RADO
+  language: Python
+  doi: 10.1101/2023.10.30.564840
+  cite_title: Robust and Accurate Doublet Detection of Single-Cell Sequencing Data via Maximizing Area Under Precision-Recall
+    Curve
+  year: 2023
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#rado
+  tags: [preprint, atac]
+
+- id: imagedoubler
+  name: ImageDoubler
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Detects doublets and empty capture sites from the capture-chamber images of Fluidigm C1 runs instead of from expression
+  gain: detection rate up to 93.87% and at least 33.1% higher F1 than expression-based detectors (self-reported)
+  gain_source: self-reported
+  caveats: Needs the per-site images of image-capturing platforms (Fluidigm C1); not applicable to droplet data.
+  url: https://github.com/GuanLab/ImageDoubler
+  repo: GuanLab/ImageDoubler
+  language: Python
+  doi: 10.1038/s41467-024-55434-0
+  pmid: '39747095'
+  cite_title: 'ImageDoubler: image-based doublet identification in single-cell sequencing'
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#imagedoubler
+  tags: [imaging, fluidigm, plate-based]
+
+- id: xoublet
+  name: Xoublet
+  kind: tool
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Scrublet-like doublet scoring with a hierarchical tree for fast neighbour search, built for atlas-scale data
+  gain: 2,479,674 HeartMap profiles scored in 574.8 s and 4.14 GiB peak memory against 1060.6 s and 22.81 GiB for the Scrublet
+    core (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Its own paper reports accuracy similar to Scrublet on cell-line hashing data but less discriminative on human-mouse
+    and PBMC benchmarks.
+  doi: 10.1177/15578666261489802
+  pmid: '42781809'
+  cite_title: 'Xoublet: An Extreme-Scale Doublet Detection Algorithm for Cardiac Single-Cell Transcriptomics'
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#xoublet
+  tags: [scalability, atlas]
+
+- id: double-jeopardy
+  name: Double-jeopardy (multi-omic doublet detection)
+  kind: method
+  layer: core
+  categories: [doublets, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Labels droplets with impossible receptor or protein combinations (several BCR/TCR chains, mutually exclusive CITE-seq
+    markers) as doublets and trains a classifier on their transcriptomes to find further doublets, including homotypic ones
+  recovers: homotypic lymphocyte doublets that expression-only detectors miss
+  gain: high sensitivity and specificity in inflammatory-cell-dominant samples (self-reported, qualitative in the abstract)
+  gain_source: self-reported
+  requires: [filtered-matrix, protein]
+  caveats: Needs VDJ-seq or CITE-seq; anchored on immune cells.
+  doi: 10.1016/j.crmeth.2021.100008
+  pmid: '34278374'
+  cite_title: 'Double-jeopardy: scRNA-seq doublet/multiplet detection using multi-omic profiling'
+  year: 2021
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#double-jeopardy
+  tags: [vdj, cite-seq, immune]
+
+- id: multi-round-doublet-removal
+  name: Multi-round doublet removal (MRDR)
+  kind: method
+  layer: core
+  categories: [doublets]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Runs a doublet detector two or more times, removing calls between rounds, to offset the randomness of artificial-doublet
+    simulation
+  gain: 'two rounds of DoubletFinder raised recall by 50% over one round on 14 real datasets; cxds twice was best on 29 barcoded
+    and 106 synthetic datasets, with ROC up by at least 0.05 for all four tools tested (self-reported)'
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: More rounds remove more barcodes, so the recall gain is partly a higher removal rate; singlet loss per round not
+    reported in the abstract.
+  doi: 10.1016/j.csbj.2025.01.009
+  pmid: '39911841'
+  cite_title: Improving doublet cell removal efficiency through multiple algorithm runs
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#multi-round-doublet-removal
+  tags: [strategy]
+
+- id: expected-doublet-rate
+  name: Expected doublet rate from loading (Poisson / vendor table)
+  kind: method
+  layer: core
+  categories: [doublets, screen-design]
+  side: neutral
+  tier: standard
+  summary: Sets the number of barcodes a detector calls from the expected multiplet rate for the number of cells loaded, about
+    0.8% per 1,000 recovered cells on 10x Chromium
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Ttoouli 2025 found the 10x rule consistently underestimates the multiplets marked by hashing; the rate covers all
+    doublets, so in hashed or genotype-pooled data the within-sample (undetectable by tags) share is only about 1/N of it
+    for N equal pools; Demuxafy ran Scrublet with R = N x 0.008 / 1000.
+  url: https://www.10xgenomics.com/support
+  verified: false
+  benchmarks: [ttoouli-2025-multiplets]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#expected-doublet-rate
+  tags: [10x, loading, threshold]
+
+- id: stealth-multiplets
+  name: Stealth multiplets in sample multiplexing (Nakaki & Sharpe 2025)
+  kind: evidence
+  layer: core
+  categories: [doublets, demux-hashing]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Models four classes of multiplet in sample-multiplexed droplet data (homogeneous stealth, partial stealth, multilabelled,
+    unlabelled) and shows partial-stealth multiplets, where one cell's label is lost, in real hashed and genotype-pooled datasets
+  gain: none (cautionary finding)
+  gain_source: none
+  requires: [tag-counts]
+  caveats: Probabilities are model-based; partial-stealth multiplets matter most when labelling or demultiplexing is weak.
+  doi: 10.1186/s12864-025-11835-z
+  pmid: '40702454'
+  cite_title: Probability of stealth multiplets in sample-multiplexing for droplet-based single-cell analysis
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#stealth-multiplets
+  tags: [hashing, genotype, theory]
+
+- id: multi-tcr-doublets
+  name: Multiple TCR chains as a doublet marker in superloaded runs (Sserwadda 2025)
+  kind: evidence
+  layer: core
+  categories: [doublets, screen-design]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: In standard and superloaded multiplexed thymus and blood runs, over half of the T cells expressing multiple TCR
+    chains were doublets, so receptor configuration adds a doublet filter that expression-based tools lack
+  gain: superloading caused minimal transcriptomic differences; over 50% of multi-TCR-chain T cells were doublets regardless
+    of loading
+  gain_source: independent
+  caveats: Immune cells with paired VDJ data only.
+  doi: 10.1080/08820139.2025.2457039
+  pmid: '39882751'
+  cite_title: Superloaded Multiplexed scRNA-seq Data Preserves Primary Immune Cell Heterogeneity but Necessitates Stringent
+    Doublet Removal
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#multi-tcr-doublets
+  tags: [vdj, superloading, immune]
+
+# ------------------------------------------------------------------------------------------- doublets, ATAC and multiome
+- id: amulet
+  name: AMULET
+  kind: tool
+  layer: core
+  categories: [doublets, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Flags snATAC-seq nuclei with too many genomic loci covered by more than two reads, which a diploid nucleus cannot
+    produce, so it detects homotypic as well as heterotypic multiplets without simulation
+  recovers: homotypic multiplets that simulation-based ATAC callers miss
+  gain: recall on simulated heterotypic multiplets 0.80 and 0.90 in two PBMC samples against 0.25 and 0.23 for ArchR; precision
+    estimated from donor multiplexing (self-reported)
+  gain_source: self-reported
+  requires: [bam]
+  caveats: Needs depth (works best above about 25K median valid reads per nucleus); on low-depth islet data recall fell to
+    0.35-0.37 and ArchR was higher on one sample; scDblFinder's authors found it good on only one of three datasets.
+  url: https://github.com/UcarLab/AMULET
+  repo: UcarLab/AMULET
+  language: multiple
+  doi: 10.1186/s13059-021-02469-x
+  pmid: '34465366'
+  cite_title: 'AMULET: a novel read count-based method for effective multiplet detection from single nucleus ATAC-seq data'
+  year: 2021
+  verified: true
+  papers: [pmid:35814628]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#amulet
+  tags: [atac, multiome, fragments]
+
+- id: scibd
+  name: scIBD
+  kind: tool
+  layer: core
+  categories: [doublets, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Self-supervised, iterative heterotypic doublet detector for single-cell chromatin accessibility data that adapts
+    which simulated doublets it trusts
+  gain: outperformed other detectors on simulated and real scCAS datasets (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  url: https://github.com/Ying-Lab/scIBD
+  repo: Ying-Lab/scIBD
+  language: Python
+  doi: 10.1186/s13059-023-03072-y
+  pmid: '37814314'
+  cite_title: 'scIBD: a self-supervised iterative-optimizing model for boosting the detection of heterotypic doublets in single-cell
+    chromatin accessibility data'
+  year: 2023
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#scibd
+  tags: [atac]
+
+- id: composite
+  name: COMPOSITE
+  kind: tool
+  layer: core
+  categories: [doublets, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Compound Poisson model that combines multiplet evidence from RNA, ATAC and protein in multiomic data
+  gain: on 17 trimodal DOGMA-seq datasets (280,123 droplets) with hashing truth it removed multiplet clusters that single-omic
+    detectors left (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix, protein]
+  url: https://github.com/CHPGenetics/COMPOSITE
+  repo: CHPGenetics/COMPOSITE
+  language: Python
+  doi: 10.1038/s41467-024-49448-x
+  pmid: '38956023'
+  cite_title: A unified model-based framework for doublet or multiplet detection in single-cell multiomics data
+  year: 2024
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#composite
+  tags: [multiome, dogma-seq, hashing-truth]
+
+- id: omnidoublet
+  name: OmniDoublet
+  kind: tool
+  layer: core
+  categories: [doublets, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Combines per-modality doublet scores from RNA and chromatin, weighting each by the Jaccard agreement of neighbourhoods
+    across modalities, and thresholds the result with a Gaussian mixture
+  gain: superior accuracy, robustness and scalability against existing methods (self-reported, no number in the abstract)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  doi: 10.1093/bib/bbaf538
+  pmid: '41081728'
+  cite_title: 'OmniDoublet: a method for doublet detection in multimodal single-cell sequencing data'
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#omnidoublet
+  tags: [multiome]
+
+- id: sebula
+  name: SEBULA
+  kind: tool
+  layer: core
+  categories: [doublets, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Semi-parametric empirical Bayes multiplet caller for snATAC-seq that models the singlet background from fragments,
+    gives FDR-controlled probabilities and can add evidence from paired RNA
+  gain: better sensitivity and specificity than snATAC-seq methods across simulations and seven multimodal datasets with hashing
+    truth (self-reported)
+  gain_source: self-reported
+  requires: [bam]
+  caveats: No synthetic doublets, so no dependence on cluster structure; new (2026).
+  doi: 10.1371/journal.pcbi.1013653
+  pmid: '42054434'
+  cite_title: Semi-parametric empirical bayes method for multiplet detection in snATAC-seq with probabilistic multi-omic integration
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#sebula
+  tags: [atac, multiome, fdr]
+
+# ------------------------------------------------------------------------------------------- cell cycle
+- id: seurat-cell-cycle-scoring
+  name: Seurat CellCycleScoring / scanpy score_genes_cell_cycle
+  kind: method
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: standard
+  summary: Scores S and G2/M marker sets (Tirosh 2016 lists) against control genes and assigns each cell to G1, S or G2M by
+    the larger score; the default in Seurat and scanpy tutorials
+  gain: 'Guo & Chen 2024: no method consistently best across four datasets with experimental phase labels; marker-gene scoring
+    accurate only when the marker list suits the data'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: Always assigns every cell to a phase, so non-cycling cells are forced into G1, S or G2M (Guo & Chen 2024); CycleMix
+    authors report it labels mature neurons as cycling on droplet data; human gene lists need conversion for mouse.
+  url: https://satijalab.org/seurat/articles/cell_cycle_vignette.html
+  repo: satijalab/seurat
+  language: multiple
+  doi: 10.1126/science.aad0501
+  pmid: '27124452'
+  cite_title: Dissecting the multicellular ecosystem of metastatic melanoma by single-cell RNA-seq
+  year: 2016
+  verified: true
+  papers: [pmid:29608179, pmid:42609984]
+  benchmarks: [guo-2024-cell-cycle-comparison]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#seurat-cell-cycle-scoring
+  tags: [seurat, scanpy, marker-genes]
+
+- id: cell-cycle-regression
+  name: Regressing out cell-cycle scores (all phases or the S minus G2M difference)
+  kind: method
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: subtractive
+  tier: standard
+  summary: Removes cell-cycle variation by regressing gene expression on S and G2M scores, or only on their difference so
+    that cycling and non-cycling cells stay separated
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Removes any biology correlated with the scores, including proliferation changes that are a treatment effect; ccRemover
+    and CycleVI authors report that score regression removes other signal (self-reported by competing methods); Massoni-Badosa
+    note the same risk for any signature regression.
+  url: https://satijalab.org/seurat/articles/cell_cycle_vignette.html
+  verified: false
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cell-cycle-regression
+  tags: [seurat, regression]
+
+- id: cyclone
+  name: cyclone (scran)
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: standard
+  summary: Pair-based classifier that assigns G1, S or G2/M from the sign of expression differences within marker gene pairs
+    trained on sorted mouse ES cells; the OSCA default
+  gain: a PCA-based approach and the custom pair-based predictor performed best of six classifiers on published data, given
+    prior cell-cycle genes and rank-based normalisation (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Training set is mouse ES cells; CycleMix authors report poor performance on modern droplet data; slow on large
+    datasets; not in the Guo & Chen 2024 comparison.
+  url: https://bioconductor.org/packages/scran
+  repo: MarioniLab/scran
+  language: R
+  doi: 10.1016/j.ymeth.2015.06.021
+  pmid: '26142758'
+  cite_title: Computational assignment of cell-cycle stage from single-cell transcriptome data
+  year: 2015
+  verified: true
+  papers: [pmid:42609984]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cyclone
+  tags: [bioconductor, osca, classifier]
+
+- id: tricycle
+  name: tricycle
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: benchmarked
+  summary: Projects cells onto a fixed reference cell-cycle embedding (mouse neurosphere PCA) by transfer learning and returns
+    a continuous cell-cycle position
+  gain: 'Guo & Chen 2024: relatively accurate on mouse data, less accurate on human data; no method consistently best'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: Accuracy depends on how well the reference matches the data (Guo & Chen 2024); continuous output had to be discretised
+    for that comparison, which may understate it.
+  url: https://bioconductor.org/packages/tricycle
+  repo: hansenlab/tricycle
+  language: R
+  doi: 10.1186/s13059-021-02581-y
+  pmid: '35101061'
+  cite_title: Universal prediction of cell-cycle position using transfer learning
+  year: 2022
+  verified: true
+  benchmarks: [guo-2024-cell-cycle-comparison]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#tricycle
+  tags: [bioconductor, transfer-learning, continuous]
+
+- id: revelio
+  name: Revelio
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: benchmarked
+  summary: Rotates the PCA space to the plane in which cycling cells trace a circle and orders cells in cell-cycle time,
+    with five phase labels
+  gain: 'Guo & Chen 2024: no method consistently best; Revelio assigns every cell to one of its five phases'
+  gain_source: independent
+  requires: [filtered-matrix]
+  caveats: Assumes the data are dominated by cycling cells (built on immortalised lines).
+  url: https://github.com/danielschw188/Revelio
+  repo: danielschw188/Revelio
+  language: R
+  doi: 10.15252/msb.20209946
+  pmid: '33205894'
+  cite_title: The transcriptome dynamics of single cells during the cell cycle
+  year: 2020
+  verified: true
+  benchmarks: [guo-2024-cell-cycle-comparison]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#revelio
+  tags: [continuous]
+
+- id: ccremover
+  name: ccRemover
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Identifies components of the expression matrix driven by cell-cycle genes (by bootstrap on marker genes) and removes
+    only those, rather than regressing on phase scores
+  gain: improved clustering of cell types on simulations and three real datasets (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: CRAN package with no repository activity since 2017.
+  repo: cran/ccRemover
+  language: R
+  doi: 10.1038/srep33892
+  pmid: '27670849'
+  cite_title: Identifying and removing the cell-cycle effect from single-cell RNA-Sequencing data
+  year: 2016
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#ccremover
+  tags: [cran, unmaintained]
+
+- id: sclvm
+  name: scLVM
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Latent variable model that estimates a cell-cycle covariance from annotated genes and removes it, exposing hidden
+    subpopulations (successor f-scLVM handles many gene sets)
+  gain: revealed T helper 2 differentiation stages hidden by cell-cycle variation (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Built for hundreds of cells; superseded and not maintained.
+  repo: PMBio/scLVM
+  language: multiple
+  doi: 10.1038/nbt.3102
+  pmid: '25599176'
+  cite_title: Computational analysis of cell-to-cell heterogeneity in single-cell RNA-sequencing data reveals hidden subpopulations
+    of cells
+  year: 2015
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#sclvm
+  tags: [latent-variable, unmaintained]
+
+- id: cyclum
+  name: Cyclum
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: both
+  tier: published-unbenchmarked
+  summary: Autoencoder with a circular latent variable that infers cell-cycle pseudotime and can remove the cell-cycle component
+  gain: more accurate and robust cell-cycle characterisation than existing approaches, and clearer subpopulations after removal
+    (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  url: https://github.com/KChen-lab/Cyclum
+  repo: KChen-lab/Cyclum
+  language: Python
+  doi: 10.1038/s41467-020-15295-9
+  pmid: '32188848'
+  cite_title: Latent periodic process inference from single-cell RNA-seq data
+  year: 2020
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cyclum
+  tags: [deep-learning, continuous]
+
+- id: recat
+  name: reCAT
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Orders unsynchronised cells along the cell cycle with a travelling-salesman path and a hidden Markov model to call
+    phases
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Last repository update 2019.
+  url: https://github.com/tinglab/reCAT
+  repo: tinglab/reCAT
+  language: R
+  doi: 10.1038/s41467-017-00039-z
+  pmid: '28630425'
+  cite_title: Reconstructing cell cycle pseudo time-series via single-cell transcriptome data
+  year: 2017
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#recat
+  tags: [pseudotime, unmaintained]
+
+- id: peco
+  name: peco
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Predicts continuous cell-cycle phase from a few cyclic genes, trained on iPSCs with FUCCI imaging-derived phase
+  gain: five genes predicted position on the cycle to within 14% of the full cycle in iPSCs (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Trained on iPSCs (C1, plate-based); transfer to other cell types untested by others.
+  url: https://github.com/jhsiao999/peco
+  repo: jhsiao999/peco
+  language: R
+  doi: 10.1101/gr.247759.118
+  pmid: '32312741'
+  cite_title: Characterizing and inferring quantitative cell cycle phase in single-cell RNA-seq data analysis
+  year: 2020
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#peco
+  tags: [fucci, continuous]
+
+- id: ccpe
+  name: CCPE
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: both
+  tier: published-unbenchmarked
+  summary: Fits a discriminative helix to estimate cell-cycle pseudotime and phases and to remove cell-cycle effects
+  gain: competitive with existing methods on simulated and real data and robust to dropout (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: MATLAB implementation.
+  url: https://github.com/LiuJJ0327/CCPE
+  repo: LiuJJ0327/CCPE
+  doi: 10.1093/nar/gkab1236
+  pmid: '34931240'
+  cite_title: 'CCPE: cell cycle pseudotime estimation for single cell RNA-seq data'
+  year: 2022
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#ccpe
+  tags: [matlab, pseudotime]
+
+- id: deepcycle
+  name: DeepCycle
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress, trajectories]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Autoencoder that fits the cycling pattern of cell-cycle genes in unspliced-spliced space to assign each cell a
+    cell-cycle angle
+  gain_source: none
+  requires: [spliced-unspliced]
+  url: https://github.com/andreariba/DeepCycle
+  repo: andreariba/DeepCycle
+  language: Python
+  doi: 10.1038/s41467-022-30545-8
+  pmid: '35606383'
+  cite_title: Cell cycle gene regulation dynamics revealed by RNA velocity and deep-learning
+  year: 2022
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#deepcycle
+  tags: [velocity, deep-learning]
+
+- id: velocycle
+  name: VeloCycle
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress, trajectories]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Bayesian RNA velocity model constrained to a periodic manifold that infers cell-cycle phase and speed with uncertainty
+  gain: cell-cycle periods validated against live imaging; detected speed differences between progenitors and after Perturb-seq
+    knockdowns (self-reported)
+  gain_source: self-reported
+  requires: [spliced-unspliced]
+  caveats: Speed estimates are of interest in perturbation screens where drugs slow the cycle.
+  url: https://github.com/lamanno-epfl/velocycle
+  repo: lamanno-epfl/velocycle
+  language: Python
+  doi: 10.1038/s41592-024-02471-8
+  pmid: '39482463'
+  cite_title: Statistical inference with a manifold-constrained RNA velocity model uncovers cell cycle speed modulations
+  year: 2024
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#velocycle
+  tags: [velocity, perturb-seq, bayesian]
+
+- id: ccafv2
+  name: ccAFv2
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Neural-network classifier of six cell-cycle states plus a quiescent-like neural G0 state, with a confidence threshold
+    that leaves uncertain cells unclassified
+  gain: better than or equal to other methods while calling more states (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Preprint; G0, G1 and late G1 calls are less accurate outside neuroepithelial cell types.
+  url: https://github.com/plaisier-lab/ccAFv2
+  repo: plaisier-lab/ccAFv2
+  language: multiple
+  doi: 10.1101/2024.04.16.589816
+  pmid: '38659838'
+  cite_title: Classifying cell cycle states and a quiescent-like G0 state using single-cell transcriptomics
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#ccafv2
+  tags: [preprint, g0, classifier]
+
+- id: cyclemix
+  name: CycleMix
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: both
+  tier: published-unbenchmarked
+  summary: Gaussian mixture model over marker-gene scores that assigns any number of cell-cycle states and can call cells
+    non-cycling
+  recovers: non-cycling cells that Seurat-style scoring forces into a phase
+  gain: better assignment and regression than Seurat and cyclone on six droplet datasets (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  url: https://github.com/tallulandrews/CycleMix
+  repo: tallulandrews/CycleMix
+  language: R
+  doi: 10.1093/bioadv/vbag179
+  pmid: '42609984'
+  cite_title: 'CycleMix: Gaussian mixture modeling of the cell cycle'
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cyclemix
+  tags: [bioconductor, mixture-model, non-cycling]
+
+- id: cyclevi
+  name: CycleVI
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: both
+  tier: published-unbenchmarked
+  summary: Deep generative model with a circular latent subspace that separates cell-cycle variation from the rest, giving
+    a continuous phase and a residual space free of cell-cycle effects
+  recovers: signals entangled with proliferation, including drug responses, that score regression removes
+  gain: phase validated against protein-level measurements; preserved drug-response signals better than standard cell-cycle
+    regression (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  url: https://github.com/jeuken/CycleVI
+  repo: jeuken/CycleVI
+  language: Python
+  doi: 10.1093/bioinformatics/btag372
+  pmid: '42334940'
+  cite_title: 'CycleVI: isolating cell cycle variation with an interpretable deep generative model'
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cyclevi
+  tags: [deep-learning, drug-response, scvi]
+
+- id: guo-chen-2024
+  name: Guo & Chen 2024 cell-cycle phase method comparison
+  kind: evidence
+  layer: core
+  categories: [cell-cycle-and-stress, qc-benchmarks]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Compared Tricycle, Seurat CellCycleScoring, Revelio and CS1CC on four datasets with experimentally labelled phases
+    (hESC and RPE1 FUCCI, mESC Quartz-Seq and Hoechst-sorted mESC) and on simulations
+  gain: no method consistently best; accuracy depends on the fit between reference or marker list and the data; Tricycle better
+    on mouse than human; adding cells of known phase to the query improved all methods
+  gain_source: independent
+  caveats: Small, plate-based datasets (35-288 cells each) of cycling stem and epithelial cells; no droplet data, no drug-treated
+    or non-cycling cells; cyclone not included.
+  doi: 10.1093/bib/bbad517
+  pmid: '38261342'
+  cite_title: 'From G1 to M: a comparative study of methods for identifying cell cycle phases'
+  year: 2024
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#guo-chen-2024
+  tags: [benchmark, fucci]
+
+- id: cell-cycle-as-readout
+  name: Score cell cycle as a response readout, regress it only within condition
+  kind: hypothesis
+  layer: core
+  categories: [cell-cycle-and-stress, perturbation-models]
+  side: additive
+  tier: hypothesis
+  summary: In drug and genetic screens, phase shifts and arrest are part of the response, so phase fractions per condition
+    should be reported and modelled, and any cell-cycle removal done within condition or by disentangling (CycleVI) rather
+    than by global score regression
+  recovers: proliferation and arrest effects that global regression removes
+  gain: none measured for global regression in screens; CycleVI reports better preservation of drug-response signals than
+    standard regression (self-reported); VeloCycle detected cycle-speed changes after Perturb-seq knockdowns
+  gain_source: none
+  requires: [multiple-conditions, filtered-matrix]
+  caveats: Phase calls themselves are uncertain (no method consistently best, Guo & Chen 2024), so condition differences
+    in phase should be checked with a second caller.
+  verified: false
+  papers: [pmid:42334940, pmid:39482463]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cell-cycle-as-readout
+  tags: [drug-screen, perturbation]
+
+# ------------------------------------------------------------------------------------------- dissociation and handling stress
+- id: denisenko-2020
+  name: Denisenko et al. 2020 dissociation and storage biases
+  kind: evidence
+  layer: core
+  categories: [cell-cycle-and-stress, screen-design]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Compared cold and warm dissociation, fresh, cryopreserved and methanol-fixed cells, and three single-nucleus workflows
+    on adult mouse kidney
+  gain: cold dissociation recovered 330 podocytes (2.78%) against 3 (0.03%) warm; warm dissociation induced stress genes;
+    cryopreservation gave about 30% fewer high-quality cells; nuclei gave more genes (median 1,819 vs 981) but fewer immune
+    cells (0.73% vs 6.03%)
+  gain_source: independent
+  caveats: One tissue (mouse kidney).
+  doi: 10.1186/s13059-020-02048-6
+  pmid: '32487174'
+  cite_title: Systematic assessment of tissue dissociation and storage biases in single-cell and single-nucleus RNA-seq workflows
+  year: 2020
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#denisenko-2020
+  tags: [dissociation, cryopreservation, nuclei, kidney]
+
+- id: cold-protease-dissociation
+  name: Cold-active protease dissociation (6 C)
+  kind: design
+  layer: core
+  categories: [cell-cycle-and-stress, screen-design]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Dissociates tissue with a protease purified from a psychrophilic microorganism at 6 C or colder, so
+    transcription is largely stopped while cells are released
+  gain: large reduction of 37 C dissociation artefacts in 20,424 P1 mouse kidney cells (self-reported); O'Flanagan 2019 and
+    Denisenko 2020 independently confirmed lower stress signatures with cold dissociation
+  gain_source: self-reported
+  caveats: Slower and less complete digestion for some tissues; Denisenko found cell-type recovery shifts in both directions.
+  doi: 10.1242/dev.151142
+  pmid: '28851704'
+  cite_title: 'Psychrophilic proteases dramatically reduce single-cell RNA-seq artifacts: a molecular atlas of kidney development'
+  year: 2017
+  verified: true
+  papers: [pmid:31623682, pmid:32487174]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cold-protease-dissociation
+  tags: [dissociation, bench, kidney]
+
+- id: transcription-inhibitor-dissociation
+  name: Transcription and translation inhibitors during dissociation (Act-seq, Marsh 2022 cocktail)
+  kind: design
+  layer: core
+  categories: [cell-cycle-and-stress, screen-design]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Adds actinomycin D, triptolide and anisomycin (or actinomycin D alone in Act-seq) during enzymatic digestion so
+    ex vivo immediate-early and stress genes cannot be induced
+  gain: abolished the ex vivo activated microglia (exAM) cluster (Fos, Jun, Hspa1a, Dusp1, Ccl3, Ccl4) seen after inhibitor-free
+    digestion; no differentially expressed genes between mechanical dissociation with and without inhibitors (self-reported)
+  gain_source: self-reported
+  caveats: The same signature appears in postmortem human snRNA-seq, where it cannot be prevented, and was induced in resected
+    human brain by elevated temperature ex vivo; validated mainly in brain myeloid cells.
+  doi: 10.1038/s41593-022-01022-8
+  pmid: '35260865'
+  cite_title: Dissection of artifactual and confounding glial signatures by single-cell sequencing of mouse and human brain
+  year: 2022
+  verified: true
+  papers: [pmid:29024657]
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#transcription-inhibitor-dissociation
+  tags: [dissociation, microglia, bench]
+
+- id: massoni-badosa-2020
+  name: Massoni-Badosa et al. 2020 sampling-time artefacts
+  kind: evidence
+  layer: core
+  categories: [cell-cycle-and-stress, batch-and-plate-effects]
+  side: both
+  tier: published-unbenchmarked
+  summary: Measured how hours at room temperature between blood draw and cryopreservation change single-cell profiles, built
+    a time score to flag and regress the effect, and showed 4 C storage prevents it
+  recovers: samples with long processing delays, by score regression or by cold storage
+  gain: 1,185 genes changed in PBMC (318 up, 867 down) and 1,868 in CLL beyond 2 h; the time score classified affected cells
+    with AUC 0.888; regression restored mixing by kBET, mainly for delays under 8 h; at 4 C no global artefact up to 48 h
+  gain_source: independent
+  caveats: Regressing a signature can remove subtle biology and homogenise subpopulations (the authors' own caution); blood
+    and CLL only.
+  doi: 10.1186/s13059-020-02032-0
+  pmid: '32393363'
+  cite_title: Sampling time-dependent artifacts in single-cell genomics studies
+  year: 2020
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#massoni-badosa-2020
+  tags: [blood, sampling-time, signature-score, kbet]
+
+- id: machado-2021
+  name: Machado et al. 2021 conserved tissue-damage stress response
+  kind: evidence
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Single-cell and single-nucleus atlases of intact (fixed in situ), dissociated and injured muscle and liver revealed
+    a stress signature shared by many cell types, also present in published reference atlases
+  gain: none (cautionary finding); the dissociation signature distorts reference atlases across tissues
+  gain_source: none
+  caveats: Abstract only checked (no open full text); the same programme is induced by real injury, so it is not purely artefact.
+  doi: 10.1016/j.stem.2021.01.017
+  pmid: '33609440'
+  cite_title: Tissue damage induces a conserved stress response that initiates quiescent muscle stem cell activation
+  year: 2021
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#machado-2021
+  tags: [dissociation, muscle, liver, atlas]
+
+- id: mattei-2020
+  name: Mattei et al. 2020 enzymatic versus cold mechanical brain dissociation
+  kind: evidence
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Standard enzymatic digestion of mouse brain at 37 C caused profound, consistent changes in the transcriptome and
+    proteotype of neurons and glia compared with mechanical dissociation at 4 C
+  gain: none (cautionary finding)
+  gain_source: none
+  doi: 10.3390/ijms21217944
+  pmid: '33114694'
+  cite_title: Enzymatic Dissociation Induces Transcriptional and Proteotype Bias in Brain Cell Populations
+  year: 2020
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#mattei-2020
+  tags: [dissociation, brain]
+
+- id: dostalova-2026
+  name: Dostalova et al. 2026 dissociation workflow and reactive astrocytes
+  kind: evidence
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: A widely used commercial brain dissociation kit under-represented reactive astrocytes after ischaemic stroke compared
+    with a low-shear workflow, selectively losing remodelling signatures
+  gain: none (cautionary finding); dissociation choice changed which disease-associated cells survived
+  gain_source: none
+  caveats: One stroke model, with a preliminary similar trend in tauopathy.
+  doi: 10.1007/s12035-026-06278-w
+  pmid: '42886297'
+  cite_title: Tissue Dissociation Workflows Influence Reactive Astrocyte Recovery in Single-Cell Transcriptomics
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#dostalova-2026
+  tags: [dissociation, brain, survivor-bias]
+
+- id: gruffi
+  name: Gruffi
+  kind: tool
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Scores glycolysis and ER-stress pathway activity on granular neighbourhoods and removes the stressed subpopulation
+    found in brain organoids but not in fetal tissue
+  gain: identified an organoid-specific stressed population across about 190,000 cells and six validation datasets; removal
+    improved resemblance to in vivo data (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Built for organoids, where the stress is culture-induced hypoxia rather than handling; removes cells.
+  url: https://github.com/jn-goe/gruffi
+  repo: jn-goe/gruffi
+  language: R
+  doi: 10.15252/embj.2022111118
+  pmid: '35919947'
+  cite_title: 'Gruffi: an algorithm for computational removal of stressed cells from brain organoid transcriptomic datasets'
+  year: 2022
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#gruffi
+  tags: [organoid, seurat]
+
+- id: sat-gene-panels
+  name: Stress-altered transcription gene panels (Yan 2026)
+  kind: method
+  layer: core
+  categories: [cell-cycle-and-stress]
+  side: both
+  tier: published-unbenchmarked
+  summary: Tissue-specific dissociation-stress gene panels for brain and skull bone marrow, refined by random forest from
+    paired gentle and conventional preparations, used to detect and remove the artefact retrospectively
+  recovers: published datasets prepared with conventional dissociation
+  gain: the optimised protocol cut stress-altered transcription by about 95%; the panels alone cut it by 60-64% (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Neuroimmune tissues only; repository not checked.
+  doi: 10.1038/s42003-026-10609-x
+  pmid: '42410134'
+  cite_title: A two-pronged strategy eliminates dissociation artifacts for high-fidelity neuroimmune single-cell transcriptomics
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#sat-gene-panels
+  tags: [dissociation, brain, bone-marrow]
+
+- id: handling-vs-drug-stress
+  name: Separate handling stress from drug-induced stress with matched vehicle wells
+  kind: hypothesis
+  layer: core
+  categories: [cell-cycle-and-stress, screen-design]
+  side: both
+  tier: hypothesis
+  summary: Many drugs induce the same immediate-early and heat-shock genes as dissociation, so a stress score should be compared
+    with vehicle wells handled in the same lane and time, and only the vehicle-matched excess read as response
+  recovers: genuine stress responses that a global stress-score regression or filter would remove, and drug calls that are
+    really handling artefacts
+  gain: none measured; handling time alone changed 1,185 PBMC genes (Massoni-Badosa 2020) and enzymatic digestion created
+    a stress cluster (Marsh 2022)
+  gain_source: none
+  requires: [multiple-conditions, replicates]
+  caveats: Needs vehicle controls in every lane or plate and matched handling time; cultured lines have less dissociation stress
+    than tissue but trypsinisation and wait times still apply.
+  verified: false
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#handling-vs-drug-stress
+  tags: [drug-screen, controls]
+
+# ------------------------------------------------------------------------------------------- batch, lane and plate effects
+- id: batch-composition-diagnostic
+  name: Per-batch QC distributions and per-cluster batch composition
+  kind: method
+  layer: core
+  categories: [batch-and-plate-effects, qc-metrics-thresholds]
+  side: neutral
+  tier: standard
+  summary: Plots QC metrics by lane, plate or batch and tabulates each cluster's share of cells from each batch before integration,
+    flagging clusters made of one batch and batches with shifted QC
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: A cluster from one batch can be real biology when batches differ in condition, which is why batch and condition
+    must not be confounded by design.
+  url: https://bioconductor.org/books/release/OSCA/
+  verified: false
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#batch-composition-diagnostic
+  tags: [osca, diagnostic]
+
+- id: kbet
+  name: kBET (k-nearest-neighbour batch-effect test)
+  kind: tool
+  layer: core
+  categories: [batch-and-plate-effects, integration]
+  side: neutral
+  tier: standard
+  summary: Tests whether the batch composition of each cell's neighbourhood matches the global composition and reports a
+    rejection rate; the same package includes a principal-component regression on batch
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Sensitive to cell-type composition differences between batches, which it reads as batch effect; one of the scIB
+    integration metrics; slow on large data without subsampling.
+  url: https://github.com/theislab/kBET
+  repo: theislab/kBET
+  language: R
+  doi: 10.1038/s41592-018-0254-1
+  pmid: '30573817'
+  cite_title: A test metric for assessing single-cell RNA-seq batch correction
+  year: 2019
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#kbet
+  tags: [metric, diagnostic]
+
+- id: lisi
+  name: LISI (local inverse Simpson's index)
+  kind: tool
+  layer: core
+  categories: [batch-and-plate-effects, integration]
+  side: neutral
+  tier: standard
+  summary: Effective number of batches (iLISI) or cell types (cLISI) in each cell's neighbourhood, introduced with Harmony
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Like kBET, cannot tell batch effect from batch-specific cell types without labels; one of the scIB metrics.
+  url: https://github.com/immunogenomics/LISI
+  repo: immunogenomics/LISI
+  language: R
+  doi: 10.1038/s41592-019-0619-0
+  pmid: '31740819'
+  cite_title: Fast, sensitive and accurate integration of single-cell data with Harmony
+  year: 2019
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#lisi
+  tags: [metric, diagnostic, harmony]
+
+- id: cellmixs
+  name: CellMixS (cell-specific mixing score)
+  kind: tool
+  layer: core
+  categories: [batch-and-plate-effects]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Cell-level batch mixing score (cms) that compares distance distributions to each batch within a cell's neighbourhood,
+    separating local batch bias from unbalanced batch composition
+  gain: cell-specific metrics outperformed cell-type-level and global metrics on real and synthetic data (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  url: https://bioconductor.org/packages/CellMixS
+  repo: almutlue/CellMixS
+  language: R
+  doi: 10.26508/lsa.202001004
+  pmid: '33758076'
+  cite_title: 'CellMixS: quantifying and visualizing batch effects in single-cell RNA-seq data'
+  year: 2021
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#cellmixs
+  tags: [bioconductor, metric, diagnostic]
+
+- id: gte-batch-genes
+  name: GTE (group technical effects) per-gene batch metric
+  kind: method
+  layer: core
+  categories: [batch-and-plate-effects]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Quantifies how much batch affects each gene, identifying a small set of highly batch-sensitive genes that dominate
+    the batch effect
+  gain: as few as three highly batch-sensitive genes were enough to create a substantial batch effect; cell-level GTE outperformed
+    existing batch quantification methods (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Repository not checked.
+  doi: 10.1038/s43588-025-00824-7
+  pmid: '40579473'
+  cite_title: Quantifying batch effects for individual genes in single-cell data
+  year: 2025
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#gte-batch-genes
+  tags: [metric, gene-level]
+
+- id: rautenstrauch-2026
+  name: Rautenstrauch & Ohler 2026 silhouette shortcomings
+  kind: evidence
+  layer: core
+  categories: [batch-and-plate-effects, integration]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Showed that silhouette-based metrics (batch ASW, cell-type ASW) cannot reliably assess batch-effect removal or
+    conservation of biological signal because their assumptions are violated in integration settings
+  gain: none (cautionary finding)
+  gain_source: independent
+  doi: 10.1038/s41587-025-02743-4
+  pmid: '40739072'
+  cite_title: Shortcomings of silhouette in single-cell integration benchmarking
+  year: 2026
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#rautenstrauch-2026
+  tags: [metric, silhouette]
+
+- id: tung-2017
+  name: Tung et al. 2017 batch effects and study design
+  kind: evidence
+  layer: core
+  categories: [batch-and-plate-effects, screen-design]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Three Fluidigm C1 replicates from each of three iPSC lines showed genotype as the largest source of variation but
+    substantial variation between technical replicates, with UMI counts themselves affected by batch
+  gain: none (cautionary finding); recommends designs where each batch contains every individual or condition
+  gain_source: independent
+  doi: 10.1038/srep39921
+  pmid: '28045081'
+  cite_title: Batch effects and the effective design of single-cell gene expression studies
+  year: 2017
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#tung-2017
+  tags: [design, plate-based, ipsc]
+
+- id: hicks-2018
+  name: Hicks et al. 2018 technical variability and confounded batches
+  kind: evidence
+  layer: core
+  categories: [batch-and-plate-effects]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Reanalysed published scRNA-seq studies and showed that systematic technical variation, including batch confounded
+    with biology, explains a substantial share of cell-to-cell variability and the proportion of zeros
+  gain: none (cautionary finding)
+  gain_source: independent
+  doi: 10.1093/biostatistics/kxx053
+  pmid: '29121214'
+  cite_title: Missing data and technical variability in single-cell RNA-sequencing experiments
+  year: 2018
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#hicks-2018
+  tags: [design, confounding]
+
+- id: lun-marioni-2017
+  name: Lun & Marioni 2017 plate effects in DE
+  kind: evidence
+  layer: core
+  categories: [batch-and-plate-effects, low-cell-stats]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: When the groups compared were processed on separate plates, cell-level DE lost type I error control; summing counts
+    per plate and testing plates restored it without loss of power in simulations
+  gain: restored type I error control under plate effects and improved specificity and gene ranking on real data
+  gain_source: self-reported
+  requires: [replicates]
+  caveats: Needs several plates per group; with one plate per condition, plate and condition cannot be separated by any method.
+  doi: 10.1093/biostatistics/kxw055
+  pmid: '28334062'
+  cite_title: Overcoming confounding plate effects in differential expression analyses of single-cell RNA-seq data
+  year: 2017
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#lun-marioni-2017
+  tags: [plate-based, pseudobulk, type-i-error]
+
+- id: swappeddrops
+  name: swappedDrops (DropletUtils) barcode-swapping removal
+  kind: tool
+  layer: core
+  categories: [batch-and-plate-effects, ambient-rna]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Removes molecules whose cell barcode and UMI appear in more than one sample sequenced together, which are products
+    of index swapping on patterned flow cells
+  gain: about 2.5% of reads were swapped between samples on a HiSeq 4000 in plate-based data; swapping produced complex artefactual
+    cell libraries in 10x data (self-reported)
+  gain_source: self-reported
+  requires: [bam]
+  caveats: Needs molecule information for every sample in the sequencing pool; matters when samples share a lane, as in multiplexed
+    screens sequenced together.
+  url: https://bioconductor.org/packages/DropletUtils
+  repo: MarioniLab/DropletUtils
+  language: R
+  doi: 10.1038/s41467-018-05083-x
+  pmid: '29991676'
+  cite_title: Detection and removal of barcode swapping in single-cell RNA-seq data
+  year: 2018
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#swappeddrops
+  tags: [index-hopping, sequencing-lane, bioconductor]
+
+- id: phantompurger
+  name: PhantomPurgeR (index-hopping model)
+  kind: tool
+  layer: core
+  categories: [batch-and-plate-effects, ambient-rna]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Estimates the sample index-hopping rate in multiplexed droplet libraries and assigns each hopped read to its sample
+    of origin, purging phantom molecules
+  gain: hopping probability 0.003-0.009, yet phantom molecules exceeded 8% in over 25% of samples and reached 85% in low-complexity
+    samples; phantom molecules created phantom cells and turned empty droplets into apparent cells (self-reported)
+  gain_source: self-reported
+  requires: [bam]
+  caveats: Last repository update 2020.
+  url: https://github.com/rfarouni/PhantomPurgeR
+  repo: rfarouni/PhantomPurgeR
+  language: R
+  doi: 10.1038/s41467-020-16522-z
+  pmid: '32483174'
+  cite_title: Model-based analysis of sample index hopping reveals its widespread artifacts in multiplexed single-cell RNA-sequencing
+  year: 2020
+  verified: true
+  track: QC-sweep-B
+  review: 12-doublets-stress-batch#phantompurger
+  tags: [index-hopping, sequencing-lane, low-complexity]

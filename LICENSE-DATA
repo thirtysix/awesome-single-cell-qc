@@ -1,0 +1,22 @@
+The catalog data in this repository (curation/*.yaml, curation/records/*.yaml,
+data/catalog.json, data/catalog.tsv, docs/catalog.js, docs/records.md, the
+review chapters in docs/review/ and the generated README.md) is licensed under
+the Creative Commons Attribution 4.0 International License (CC BY 4.0).
+
+    https://creativecommons.org/licenses/by/4.0/
+
+The records and review chapters are written by hand from the cited papers.
+Generated fields draw on:
+
+  - OpenAlex bibliographic data, released under CC0
+    https://openalex.org
+  - Crossref, DataCite and PubMed metadata, used to verify titles and identifiers
+  - GitHub repository metadata retrieved through the GitHub REST API
+
+Attribution for reuse:
+
+    Barker, H. Awesome Single-Cell QC: a catalog of single-cell QC and
+    preprocessing tools, methods and evidence.
+    https://github.com/thirtysix/awesome-single-cell-qc
+
+Pipeline source code is licensed separately under the MIT License; see LICENSE.

@@ -1,0 +1,20 @@
+# Test fixture: benchmark studies the fixture records point at. Same shape as
+# curation/benchmarks.yaml. xi-li-2021 is deliberately referenced by no record.
+benchmarks:
+  - id: janssen-2023-background-noise
+    name: Janssen et al. 2023, background noise and its removal
+    doi: 10.1186/s13059-023-02978-x
+    pmid: 37337297
+    cite_title: The effect of background noise and its removal on the analysis of single-cell expression data
+    year: 2023
+    scope: ambient RNA removal methods compared against a genotype-based ground truth
+    verified: true
+
+  - id: xi-li-2021-doublet-benchmark
+    name: Xi and Li 2021, doublet-detection benchmark
+    doi: 10.1016/j.cels.2020.11.008
+    pmid: 33338399
+    cite_title: Benchmarking Computational Doublet-Detection Methods for Single-Cell RNA Sequencing Data
+    year: 2021
+    scope: computational doublet-detection methods on real and synthetic datasets
+    verified: true

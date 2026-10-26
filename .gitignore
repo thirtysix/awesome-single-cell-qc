@@ -1,0 +1,8 @@
+nextsession.md
+.denylist.local
+dist/
+data/cache/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/

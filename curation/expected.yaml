@@ -1,0 +1,101 @@
+# Recall list: records a complete catalog must contain, written down BEFORE
+# looking at what the research tracks found, so "did it find the obvious
+# things?" is a number rather than an impression. `make check` reports how many
+# are present; a missing one is printed, not a failure.
+#
+# Each entry is a record id, or a mapping with an id and a reason:
+#   - emptydrops
+#   - {id: cellbender, why: default ambient + cell-calling step in many pipelines}
+#
+# Written 2026-10-24 before the QC sweep (chapters 11-13) and concept map (20-22) research,
+# from the scRNA-tools QC, doublet, ambient and demultiplexing categories, the
+# scverse and OSCA best-practice guides, and the major benchmarks. A miss is
+# resolved as added, out of scope, or unmaintained.
+expected:
+  # --- alignment & quantification
+  - {id: cellranger, why: default 10x pipeline; its cell calling decides what is kept}
+  - starsolo
+  - alevin-fry
+  - kallisto-bustools
+  - {id: bruning-2022, why: independent benchmark of preprocessing pipelines}
+  # --- cell calling
+  - emptydrops
+  - cb2
+  - dropkick
+  - validrops
+  - emptynn
+  # --- ambient RNA
+  - soupx
+  - decontx
+  - cellbender
+  - scar
+  - fastcar
+  - sccdc
+  # --- QC metrics and thresholds
+  - mad-adaptive-qc
+  - miqc
+  - ddqc
+  - sampleqc
+  - osorio-cai-2021
+  # --- damaged cells
+  - dropletqc
+  - {id: cellity, why: Ilicic 2016, first classifier of low-quality cells}
+  - oflanagan-2019
+  # --- doublets
+  - scdblfinder
+  - doubletfinder
+  - scrublet
+  - scds
+  - solo
+  - doubletdetection
+  - doubletdecon
+  - xi-li-2021
+  - {id: amulet, why: multiome/ATAC doublet detection}
+  # --- cell cycle and stress
+  - tricycle
+  - cyclone
+  - seurat-cell-cycle-scoring
+  - van-den-brink-2017
+  # --- guides, frameworks and benchmarks
+  - pipecomp
+  - {id: luecken-theis-2019, why: best-practice tutorial}
+  - {id: heumos-2023, why: scverse best-practice guide}
+  - {id: osca, why: Bioconductor best-practice book (Amezquita 2020)}
+  - scuttle
+  - sctk-qc
+  # --- multimodal QC (core records, secondary category multimodal)
+  - dsb
+  - adtnorm
+  - archr
+  - signac
+  # --- adjacent concept nodes
+  - concept-normalisation
+  - concept-feature-selection
+  - concept-integration
+  - concept-clustering-annotation
+  - concept-de-pseudobulk
+  - concept-perturbation-models
+  - concept-trajectories
+  - concept-multimodal
+  # --- adjacent anchors
+  - sctransform
+  - scran-pooling
+  - {id: lause-2021, why: analytic Pearson residuals}
+  - {id: ahlmann-eltze-2023, why: transformation benchmark}
+  - {id: townes-2019, why: deviance feature selection and GLM-PCA}
+  - {id: zappia-2025, why: feature selection affects integration benchmark}
+  - harmony
+  - scvi-tools
+  - scanorama
+  - {id: luecken-2022-scib, why: integration benchmark}
+  - leiden
+  - celltypist
+  - singler
+  - azimuth
+  - {id: abdelaal-2019, why: annotation benchmark}
+  - slingshot
+  - scvelo
+  - cellrank
+  - {id: saelens-2019, why: trajectory benchmark}
+  - totalvi
+  - {id: seurat-wnn, why: weighted nearest neighbours for multimodal}

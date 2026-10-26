@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "Awesome Single-Cell QC: a catalog of single-cell QC and preprocessing tools, methods and evidence"
+message: "If you use this catalog, please cite it as below."
+type: dataset
+authors:
+  - family-names: Barker
+    given-names: Harlan
+    orcid: "https://orcid.org/0000-0003-4125-2522"
+repository-code: "https://github.com/thirtysix/awesome-single-cell-qc"
+abstract: >-
+  A hand-curated catalog of single-cell QC and preprocessing tools, methods and
+  evidence, with an emphasis on salvaging cells and signal in multiplexed
+  experiments, plus a map of the adjacent analysis steps that QC choices feed
+  into. Every record carries an evidence tier, the side it works on (keeping or
+  removing cells), its required inputs and, where it recovers cells or signal,
+  the reported gain and who measured it. Identifiers are verified against
+  Crossref and PubMed; citation counts come from OpenAlex.
+keywords:
+  - single-cell RNA-seq
+  - quality control
+  - preprocessing
+  - demultiplexing
+  - cell hashing
+  - doublet detection
+  - ambient RNA
+  - multiplexed drug screens
+  - bioinformatics software
+license: CC-BY-4.0
+references:
+  - type: database
+    title: "OpenAlex"
+    url: "https://openalex.org"
+    notes: "Source of citation counts (CC0)."

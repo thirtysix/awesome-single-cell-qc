@@ -1,0 +1,700 @@
+# Benchmark studies: independent comparisons that records point at through their
+# `benchmarks:` list. Hand-written, never generated. build.py fails if a record
+# names an id that is not here. verify_citations.py checks each doi/pmid exactly
+# as it checks records.
+#
+# One entry per study:
+#   - id: xi-li-2021-doublet-benchmark      # lowercase slug, stable once used
+#     name: Xi and Li 2021, doublet-detection benchmark
+#     doi: 10.1016/j.cels.2020.11.008        # bare DOI
+#     pmid: 33338399
+#     cite_title: Benchmarking Computational Doublet-Detection Methods for Single-Cell RNA Sequencing Data
+#     year: 2021
+#     scope: what was compared, on what data
+#     verified: true                          # only if doi/pmid fetched and title matched
+# Optional: url, categories (schema category keys), notes.
+#
+# What counts (curation pass 2026-10-21): dedicated comparisons of several methods
+# on shared data, pipelines or ensembles that benchmark existing tools (hadge,
+# Demuxafy, Ensemblex), and ground-truth resources used to score methods
+# (singletCode). A new method's own comparison against its competitors
+# (deMULTIplex2, CMDdemux, HTOreader, demuxSNP, ULMnet, ADTnorm, valiDrops, ddqc,
+# scQCenrich, MitoChontrol, Scanpro) is not listed; those results stay in the
+# records' gain and caveats text. A record is linked only when the study's
+# authors are independent of the record's authors (so pipeComp is not linked to
+# scDblFinder). `notes` names the records that point at each study.
+#
+# Every entry below: PubMed esummary title and Crossref title for the DOI fetched
+# on 2026-10-21 and matched; the DOI is the one PubMed lists for the PMID.
+benchmarks:
+
+  # ---------------------------------------------------------------- demultiplexing (T1, T4)
+
+  - id: howitt-2023-hto-benchmark
+    name: Howitt et al. 2023, hashtag demultiplexing benchmark
+    doi: 10.1093/nargab/lqad086
+    pmid: "37829177"
+    cite_title: Benchmarking single-cell hashtag oligo demultiplexing methods
+    year: 2023
+    scope: "7 hashtag callers (hashedDrops, HTODemux, GMM-Demux, demuxmix, deMULTIplex, BFF raw and cluster, HashSolo) against vireo genotype calls in 6 tagging experiments: 24 BAL donors in 3 batches, 8 ovarian tumours in 2 batches, 3 lung cancer cell lines; antibody and lipid tags"
+    categories: [demux-hashing, qc-benchmarks]
+    verified: true
+    notes: "demuxmix best overall; demuxmix, GMM-Demux and HTODemux close; hashedDrops with a lowered threshold best on F-score but with doublet errors; deMULTIplex and BFF poor on low-quality hashing. Evaluates: htodemux, hashsolo, hasheddrops, demuxmix, cellhashr, gmm-demux, multiseqdemux"
+
+  - id: mylka-2022-hashing-comparison
+    name: Mylka et al. 2022, antibody versus lipid hashing
+    doi: 10.1186/s13059-022-02628-8
+    pmid: "35172874"
+    cite_title: Comparative analysis of antibody- and lipid-based multiplexing methods for single-cell RNA-seq
+    year: 2022
+    scope: "TotalSeq-A/B/C antibodies, MULTI-seq and custom lipid oligos, cholesterol oligos, anti-nucleoporin antibody nuclei hashing and CellPlex on cell lines, nuclei, PBMC and mouse tissues, scored against freemuxlet genotypes; callers MULTISeqDemux, HTODemux and GMM-Demux"
+    categories: [demux-hashing, screen-design, qc-benchmarks]
+    verified: true
+    notes: "MULTISeqDemux slightly ahead of GMM-Demux and ahead of HTODemux on most datasets; antibodies best on cell lines, lipid or cholesterol oligos best on nuclei and mouse brain. Evaluates: multiseqdemux, htodemux, gmm-demux, cell-hashing, multi-seq, nucleus-hashing"
+
+  - id: sayed-2025-hashtag-benchmark
+    name: Sayed et al. 2025, tag normalisation x caller benchmark
+    doi: 10.1093/bfgp/elae039
+    pmid: "39387404"
+    cite_title: Systematic benchmark of single-cell hashtag demultiplexing approaches reveals robust performance of a clustering-based method
+    year: 2025
+    scope: "18 workflows (4 tag normalisations x HTODemux, MULTIseqDemux and a clustering workflow, plus deMULTIplex2, demuxmix, GMM-Demux, hashedDrops, BFF raw and BFF cluster at defaults) on 12 real datasets with known labels and on simulations"
+    categories: [demux-hashing, qc-benchmarks]
+    verified: true
+    notes: "The authors' clustering workflow with per-cell CLR ranked first by average F; deMULTIplex2 had the highest average F of the established standalone tools, followed by demuxmix and GMM-Demux (Fig. 5a); BFF, hashedDrops and default HTODemux ranked lowest. Evaluates: htodemux, multiseqdemux, demultiplex2, demuxmix, gmm-demux, hasheddrops, cellhashr"
+
+  - id: curion-2024-hadge-comparison
+    name: Curion et al. 2024 (hadge), hashing and genetic demultiplexer comparison
+    doi: 10.1186/s13059-024-03249-z
+    pmid: "38671451"
+    cite_title: "hadge: a comprehensive pipeline for donor deconvolution in single-cell studies"
+    year: 2024
+    scope: "7 hashing callers (HTODemux, MULTI-seq, hashedDrops, demuxEM, GMM-Demux, BFF, HashSolo) on hashed multiple sclerosis brain nuclei matched to vireo donors; 5 genetic demultiplexers (demuxlet, freemuxlet, vireo, scSplit, souporcell) on 75 onek1k pools with known donor genotypes"
+    categories: [demux-hashing, demux-genotype, qc-benchmarks]
+    verified: true
+    notes: "MULTI-seq and demuxEM matched vireo donors best; HashSolo called almost every droplet a singlet, hashedDrops 32 of 4 048; BFF ran but failed (also within cellhashR); demuxmix failed to initialise and was excluded. Vireo, demuxlet, freemuxlet and souporcell were the consistent genetic group, vireo best across downsampling, scSplit worst. Evaluates: htodemux, multiseqdemux, hasheddrops, demuxem, gmm-demux, cellhashr, hashsolo, demuxlet, vireo, souporcell"
+
+  - id: brown-2024-multiplexing-reagents
+    name: Brown et al. 2024, multiplexing reagents and fixed kits
+    doi: 10.1016/j.ygeno.2024.110793
+    pmid: "38220132"
+    cite_title: A risk-reward examination of sample multiplexing reagents for single cell RNA-Seq
+    year: 2024
+    scope: "MULTI-seq lipids, hashtag antibodies and CellPlex on PBMC (4 donors, SNP truth), mouse embryonic brain and PDX; Cell Ranger multi and cellhashR callers; Parse Evercode and 10x Flex fixed kits on PDX nuclei"
+    categories: [demux-hashing, screen-design, qc-benchmarks]
+    verified: true
+    notes: "Full text read from the bioRxiv version (10.1101/2023.06.20.544880). MULTI-seq had the best overall classification accuracy on PBMC, then antibodies, then CellPlex; BFF cluster best on the low signal-to-noise CellPlex set but four-fold more false positives on the high-quality MULTI-seq set; on PDX nuclei Parse was more reliable while Flex capture failed. Evaluates: cell-hashing, multi-seq, cellhashr, htodemux, split-seq-parse, 10x-flex"
+
+  - id: fu-2025-snrna-genetic-benchmark
+    name: Fu et al. 2025, genetic demultiplexing for snRNA-seq
+    doi: 10.1093/bib/bbaf371
+    pmid: "40702707"
+    cite_title: Benchmarking of computational demultiplexing methods for single-nucleus RNA sequencing data
+    year: 2025
+    scope: "vireo, souporcell, freemuxlet and scSplit, each with BCFtools, cellSNP or FreeBayes variant calls, on simulated snRNA-seq pools of 2-6 samples at 0-30% doublets"
+    categories: [demux-genotype, qc-benchmarks]
+    verified: true
+    notes: "Vireo most accurate and fastest; vireo and souporcell judged superior overall with little difference except run time; freemuxlet lower accuracy; scSplit worst. Evaluates: vireo, souporcell, demuxlet (freemuxlet)"
+
+  - id: weber-2021-cancer-genetic-demux
+    name: Weber et al. 2021, genetic demultiplexing in cancer
+    doi: 10.1093/gigascience/giab062
+    pmid: "34553212"
+    cite_title: Genetic demultiplexing of pooled single-cell RNA-sequencing samples in cancer facilitates effective experimental design
+    year: 2021
+    scope: "cellSNP/vireo and demuxlet with several genotype references on in silico pools of high-grade serous ovarian cancer and lung adenocarcinoma scRNA-seq at 0-30% doublets"
+    categories: [demux-genotype, qc-benchmarks]
+    verified: true
+    notes: "cellSNP/vireo with bulk RNA-seq genotypes best; demuxlet substantially lower and more sensitive to the SNP set. Evaluates: vireo, demuxlet"
+
+  - id: neavin-2024-demuxafy-benchmark
+    name: Neavin et al. 2024 (Demuxafy), genetic demultiplexer and doublet detector comparison
+    doi: 10.1186/s13059-024-03224-8
+    pmid: "38622708"
+    cite_title: "Demuxafy: improvement in droplet assignment by integrating multiple single-cell demultiplexing and doublet detection methods"
+    year: 2024
+    scope: "7 genetic demultiplexers (Demuxalot, Demuxlet, Dropulation, Freemuxlet, scSplit, Souporcell, Vireo) and 7 doublet detectors (DoubletDecon, DoubletDetection, DoubletFinder, scDblFinder, scds, Scrublet, Solo) on 74 PBMC pools, fibroblast pools and 70 in silico pools of 2-128 donors"
+    categories: [demux-genotype, doublets, qc-benchmarks]
+    verified: true
+    notes: "Demuxalot (refined) fewest wrong droplets and best heterogenic doublet calls; vireo best without reference genotypes at 16 or more donors; souporcell declined above 32 donors; scds, scDblFinder and Scrublet the top doublet detectors; DoubletDecon and DoubletFinder misclassified more singlets. Demuxafy (scds + DoubletFinder) beat Chord at 8 or more donors and was equivalent below. Evaluates: demuxalot, demuxlet, vireo, souporcell, scdblfinder, doubletdecon, doubletfinder, scds, scrublet, solo, doubletdetection, chord"
+
+  - id: fiorini-2025-ensemblex-benchmark
+    name: Fiorini et al. 2025 (Ensemblex), genetic demultiplexer comparison
+    doi: 10.1186/s13059-025-03643-1
+    pmid: "40611203"
+    cite_title: "Ensemblex: an accuracy-weighted ensemble genetic demultiplexing framework for population-scale scRNAseq sample pooling"
+    year: 2025
+    scope: "Demuxalot, Demuxlet, scSplit, Souporcell and Vireo with genotypes on 96 in silico pools of 4-80 iPSC lines with whole-genome genotypes, plus experimentally pooled samples, against an ensemble of the four best"
+    categories: [demux-genotype, qc-benchmarks]
+    verified: true
+    notes: "Demuxalot, Demuxlet, Souporcell and Vireo were the four best constituents, Demuxalot and Demuxlet highest in balanced accuracy; scSplit correctly classified 30.88% of cells. Evaluates: demuxalot, demuxlet, souporcell, vireo"
+
+  # ---------------------------------------------------------------- ambient RNA, QC, doublets (T2, T5)
+
+  - id: janssen-2023-background-noise
+    name: Janssen et al. 2023, background noise and its removal
+    doi: 10.1186/s13059-023-02978-x
+    pmid: "37337297"
+    cite_title: The effect of background noise and its removal on the analysis of single-cell expression data
+    year: 2023
+    scope: "CellBender, DecontX and SoupX against genotype-based background estimates in genotype-mixed mouse kidney scRNA-seq and snRNA-seq"
+    categories: [ambient-rna, qc-benchmarks]
+    verified: true
+    notes: "CellBender gave the most precise noise estimates and the largest marker-gene improvement. Evaluates: cellbender, decontx, soupx"
+
+  - id: cargnelli-2026-ambient-benchmark
+    name: Cargnelli et al. 2026, ambient RNA decontamination benchmark
+    doi: 10.3389/fbinf.2026.1844838
+    pmid: "42688285"
+    cite_title: Benchmarking computational decontamination of ambient RNA
+    year: 2026
+    scope: "CellBender, DecontX, FastCAR, scAR, scCDC, SoupX and CellClear on simulated, species-mixing, genotype-mixing and contamination-free control data (7 datasets, 64 samples)"
+    categories: [ambient-rna, qc-benchmarks]
+    verified: true
+    notes: "No single best method; CellBender, DecontX and SoupX generally performed well and are recommended; scAR removed the most ambient RNA but also the most endogenous signal. Evaluates: cellbender, decontx, soupx, scar, fastcar, sccdc, cellclear"
+
+  - id: nie-2026-ambient-benchmark
+    name: Nie et al. 2026, ambient RNA decontamination benchmark
+    doi: 10.1038/s41467-026-77458-4
+    pmid: "42844284"
+    cite_title: Systematic benchmarking of ambient RNA decontamination tools to advance precision in single-cell transcriptomic analysis
+    year: 2026
+    scope: "DecontX, SoupX, scAR, CellBender, FastCAR, scCDC and CellClear scored on accuracy (mtDNA-variant baseline), robustness (contamination level, cell number, depth, tissue) and subtype sensitivity"
+    categories: [ambient-rna, qc-benchmarks]
+    verified: true
+    notes: "Task-dependent: DecontX top composite accuracy; CellBender and FastCAR best absolute contamination estimates; scAR most robust and best for embeddings and marker specificity but overestimates; SoupX recommended for comparing libraries; CellClear best for subtypes. Evaluates: cellbender, decontx, soupx, scar, fastcar, sccdc, cellclear"
+
+  - id: germain-2020-pipecomp
+    name: Germain et al. 2020 (pipeComp), preprocessing pipeline benchmark
+    doi: 10.1186/s13059-020-02136-7
+    pmid: "32873325"
+    cite_title: pipeComp, a general framework for the evaluation of computational pipelines, reveals performant single cell RNA-seq preprocessing tools
+    year: 2020
+    scope: "Filtering (MAD thresholds at four stringencies, PCA-based outliers), doublet detection, normalisation, feature selection and clustering on mixtures and simulations with known identities"
+    categories: [qc-benchmarks, qc-metrics-thresholds, doublets, normalisation, feature-selection, clustering-annotation]
+    verified: true
+    notes: "Stringent global MAD filtering removed subpopulations with extreme but healthy values without improving clustering; lenient cut-offs recommended. scDblFinder was also evaluated but shares an author with pipeComp, so it is not linked. sctransform best for separability and removing library-size and detection-rate effects; regressing out detection rate or mito proportion nearly always lowered clustering accuracy; deviance best feature ranking, more features helpful up to about 4,000. Evaluates: mad-adaptive-qc, sctransform, scran-pooling, townes-2019"
+
+  - id: xi-li-2021-doublet-benchmark
+    name: Xi and Li 2021, doublet-detection benchmark
+    doi: 10.1016/j.cels.2020.11.008
+    pmid: "33338399"
+    cite_title: Benchmarking Computational Doublet-Detection Methods for Single-Cell RNA Sequencing Data
+    year: 2021
+    scope: "9 doublet detectors (doubletCells, cxds, bcds, hybrid, Scrublet, Solo, DoubletDetection, DoubletFinder, DoubletDecon) on 16 real datasets with experimentally annotated doublets and 112 synthetic datasets"
+    categories: [doublets, qc-benchmarks]
+    verified: true
+    notes: "DoubletFinder best accuracy, cxds fastest; DoubletDecon gives no score, did not beat library-size or gene-count baselines and failed on several datasets. Evaluates: doubletdecon, doubletfinder, scrublet, scds, solo, doubletdetection, doubletcells"
+
+  - id: xi-li-2021-doublet-protocol
+    name: Xi and Li 2021, doublet-detection benchmark protocol (scDblFinder added)
+    doi: 10.1016/j.xpro.2021.100699
+    pmid: "34382023"
+    cite_title: Protocol for executing and benchmarking eight computational doublet-detection methods in single-cell RNA sequencing data analysis
+    year: 2021
+    scope: "The Xi and Li benchmark re-run through DoubletCollection with scDblFinder added (Scrublet, doubletCells, cxds, bcds, hybrid, DoubletDetection, DoubletFinder, scDblFinder) on the same 16 real datasets with annotated doublets"
+    categories: [doublets, qc-benchmarks]
+    verified: true
+    notes: "scDblFinder had the highest mean AUPRC and AUROC on the 16 real datasets. Evaluates: scdblfinder, doubletfinder, scrublet, scds, doubletdetection, doubletcells"
+
+  - id: zhang-2024-singletcode
+    name: Zhang et al. 2024 (singletCode), doublet detectors on barcoded ground truth
+    doi: 10.1016/j.xgen.2024.100592
+    pmid: "38925122"
+    cite_title: Synthetic DNA barcodes identify singlets in scRNA-seq datasets and evaluate doublet algorithms
+    year: 2024
+    scope: "DoubletFinder, scDblFinder, hybrid and Scrublet scored on ground-truth singlets from lineage-barcoded datasets (mostly cell lines) and on the Xi and Li non-barcoded datasets"
+    categories: [doublets, qc-benchmarks]
+    verified: true
+    notes: "Mean AUPRC 0.13-0.34 on barcoded data with scDblFinder considerably lower than the others; scDblFinder best on the non-barcoded datasets. Chord was run on 12 samples from 3 datasets; the ensembles (hybrid, Chord) did not always beat their components. Evaluates: scdblfinder, doubletfinder, scds, scrublet, chord"
+
+  - id: ttoouli-2025-multiplets
+    name: Ttoouli and Hoffmann 2025, multiplet detection against cell hashing
+    doi: 10.1371/journal.pone.0333687
+    pmid: "41166377"
+    cite_title: "Multiplets in scRNA-seq data: Extent of the problem and efficacy of methods for removal"
+    year: 2025
+    scope: "cxds, bcds, hybrid, doubletCells, DoubletDetection, DoubletFinder, scDblFinder and Scrublet with tuned parameters, scored against cell-hashing multiplets in public hashed datasets"
+    categories: [doublets, qc-benchmarks]
+    verified: true
+    notes: "The authors call it not a benchmarking study, but it scores several tools on shared data against hashing truth. Scrublet best by AUROC; DoubletDetection, scDblFinder and DoubletFinder the top performers across metrics; all missed most hashing multiplets; the 10x multiplet-rate rule underestimated hashing multiplets. Evaluates: scdblfinder, doubletfinder, scrublet, scds, doubletdetection, doubletcells, expected-doublet-rate"
+
+  # ---------------------------------------------------------------- differential expression and few cells (T3)
+
+  - id: squair-2021-de-benchmark
+    name: Squair et al. 2021, single-cell differential expression against matched bulk
+    doi: 10.1038/s41467-021-25960-2
+    pmid: "34584091"
+    cite_title: Confronting false discoveries in single-cell differential expression
+    year: 2021
+    scope: "14 DE methods (pseudobulk edgeR, DESeq2 and limma variants; cell-level tests) on 18 gold-standard datasets with matched bulk RNA-seq, plus null comparisons, pseudo-replicates and mixed models (GLMMs adapted from muscat's implementations) on downsampled data"
+    categories: [low-cell-stats, de-pseudobulk, qc-benchmarks]
+    verified: true
+    notes: "All six top methods were pseudobulk; cell-level methods called hundreds of false DE genes; random-cell pseudo-replicates reintroduced the bias. Evaluates: pseudobulk-de, muscat, cell-subsample-pseudoreplicates"
+
+  - id: junttila-2022-ds-benchmark
+    name: Junttila et al. 2022, multi-subject differential state benchmark
+    doi: 10.1093/bib/bbac286
+    pmid: "35880426"
+    cite_title: Benchmarking methods for detecting differential states between conditions from multi-subject single-cell RNA-seq data
+    year: 2022
+    scope: "18 methods (6 pseudobulk; mixed models MAST_RE, muscat_MM, NEBULA-LN; naive and latent-variable cell-level tests) on muscat simulations, reference-free simulations and mock comparisons of real PBMC data"
+    categories: [low-cell-stats, de-pseudobulk, qc-benchmarks]
+    verified: true
+    notes: "Pseudobulk methods performed best and outperformed the mixed models; MAST_RE slightly ahead of NEBULA-LN, muscat_MM inferior on all four data types. Evaluates: pseudobulk-de, muscat, nebula"
+
+  - id: gagnon-2022-de-benchmark
+    name: Gagnon et al. 2022, multi-subject DE benchmark
+    doi: 10.3390/life12060850
+    pmid: "35743881"
+    cite_title: Recommendations of scRNA-seq Differential Gene Expression Analysis Based on Comprehensive Benchmarking
+    year: 2022
+    scope: "12 DE methods (8 pseudobulk including edgeR, limma-voom and DESeq2 variants; glmmTMB, NEBULA-HL, NEBULA-LN, MAST) on data from the authors' multi-subject, multi-condition simulator and two real datasets"
+    categories: [low-cell-stats, de-pseudobulk, qc-benchmarks]
+    verified: true
+    notes: "Negative binomial mixed models (glmmTMB, NEBULA-HL) outperformed the others; pseudobulk methods were conservative. Simulator built by the same authors. Evaluates: pseudobulk-de, nebula"
+
+  - id: hafner-2025-nested-de-benchmark
+    name: Hafner et al. 2025, DE in nested single-cell settings
+    doi: 10.1093/bib/bbaf397
+    pmid: "40794957"
+    cite_title: Single-cell differential expression analysis between conditions within nested settings
+    year: 2025
+    scope: "Pseudobulk DESeq2, permutation test and DREAM, cell-level MAST, scVI, distinct, t-test and hierarchical bootstrapping on splatPop simulations and experimental data with Reactome genes as truth"
+    categories: [low-cell-stats, de-pseudobulk, qc-benchmarks]
+    verified: true
+    notes: "Single-cell-specific methods gave no advantage over pseudobulk DESeq2 on individual datasets and ran longer; scVI agreed poorly with the others; permutation best at atlas level, DREAM a compromise. Evaluates: pseudobulk-de, scvi-de"
+
+  - id: hou-2020-imputation-benchmark
+    name: Hou et al. 2020, scRNA-seq imputation benchmark
+    doi: 10.1186/s13059-020-02132-x
+    pmid: "32854757"
+    cite_title: A systematic evaluation of single-cell RNA-sequencing imputation methods
+    year: 2020
+    scope: "18 imputation methods scored against bulk profiles and on downstream DE, clustering and trajectories, using cell lines and tissues from plate- and droplet-based platforms"
+    categories: [de-pseudobulk, low-cell-stats, qc-benchmarks]
+    verified: true
+    notes: "Most methods recovered bulk-like profiles but did not improve downstream analyses; small DE effects were smoothed away. No record is a method it evaluated (see imputation-de-evidence)"
+
+  - id: andrews-hemberg-2018-imputation
+    name: Andrews and Hemberg 2018, false signals from imputation
+    doi: 10.12688/f1000research.16613.2
+    pmid: "30906525"
+    cite_title: False signals induced by single-cell imputation
+    year: 2018
+    scope: "Six imputation methods (including MAGIC, knn-smooth, DCA and SAVER) on simulated data and permuted real scRNA-seq, scored on false-positive and irreproducible DE and correlations"
+    categories: [de-pseudobulk, qc-benchmarks]
+    verified: true
+    notes: "Smoothing methods (MAGIC, knn-smooth, DCA) generated many false positives; SAVER least likely to. No record is a method it evaluated (see imputation-de-evidence)"
+
+  - id: zhang-2020-pathway-activity-benchmark
+    name: Zhang et al. 2020, pathway activity scoring benchmark
+    doi: 10.1016/j.csbj.2020.10.007
+    pmid: "33209207"
+    cite_title: Benchmarking algorithms for pathway activity transformation of single-cell RNA-seq data
+    year: 2020
+    scope: "7 pathway activity transformation tools on 32 datasets from 16 scRNA-seq protocols, scored on accuracy, stability and scalability"
+    categories: [low-cell-stats, qc-benchmarks]
+    verified: true
+    notes: "Pagoda2 best overall, PLAGE most stable. No record is a method it evaluated (see signature-scoring-evidence)"
+
+  - id: alakwaa-2026-pathwaybench
+    name: Alakwaa et al. 2026 (PathwayBench), pseudobulk pathway scoring benchmark
+    doi: 10.21203/rs.3.rs-10271634/v1
+    pmid: "42466400"
+    cite_title: "PathwayBench: a multi-criterion benchmark of pseudobulk pathway activity scoring methods reveals rank-window competition as a mechanism of biological signal loss in single-cell RNA-seq"
+    year: 2026
+    scope: "ssGSEA, GSVA, z-score, AUCell and UCell on 8 pseudobulked case-control datasets (5 tissues, 682 donors) and simulations, against 5 criteria"
+    categories: [low-cell-stats, qc-benchmarks]
+    verified: true
+    notes: "Research Square preprint. Rank-based AUCell and UCell lost or inverted signal under high competitor burden; no method met all five criteria. No record is a method it evaluated (see signature-scoring-evidence)"
+
+  - id: ahlmann-eltze-2025-perturbation-benchmark
+    name: Ahlmann-Eltze et al. 2025, deep perturbation models versus linear baselines
+    doi: 10.1038/s41592-025-02772-6
+    pmid: "40759747"
+    cite_title: Deep-learning-based gene perturbation effect prediction does not yet outperform simple linear baselines
+    year: 2025
+    scope: "scGPT, scFoundation, UCE, scBERT, Geneformer, GEARS and CPA against no-change, additive and linear baselines on double and unseen single genetic perturbations"
+    categories: [perturbation-models]
+    verified: true
+    notes: "No deep model beat the baselines; CPA was particularly uncompetitive on double perturbations and was left out of the unseen-perturbation task. Evaluates: cpa"
+
+  - id: csendes-2025-foundation-models
+    name: Csendes et al. 2025, foundation models for perturbation prediction
+    doi: 10.1186/s12864-025-11600-2
+    pmid: "40269681"
+    cite_title: Benchmarking foundation cell models for post-perturbation RNA-seq prediction
+    year: 2025
+    scope: "scGPT and scFoundation against a train-mean baseline and simple feature-based models on the Adamson, Norman and two Replogle Perturb-seq datasets"
+    categories: [perturbation-models]
+    verified: true
+    notes: "The train-mean baseline beat both foundation models; the benchmark datasets have low perturbation-specific variance. No record is a method it evaluated"
+
+  - id: wong-2025-perturbation-controls
+    name: Wong et al. 2025, simple controls for perturbation prediction
+    doi: 10.1093/bioinformatics/btaf317
+    pmid: "40407144"
+    cite_title: Simple controls exceed best deep learning algorithms and reveal foundation model effectiveness for predicting genetic perturbations
+    year: 2025
+    scope: "A simple baseline against GEARS, transformer foundation models and simpler neural architectures on the Adamson (corrected), Norman and Replogle K562 Perturb-seq datasets"
+    categories: [perturbation-models]
+    verified: true
+    notes: "The simple baseline outperformed the deep models. No record is a method it evaluated"
+
+  - id: miller-2026-calibrated-metrics
+    name: Miller et al. 2026, calibrated metrics for perturbation models
+    doi: 10.1038/s41587-026-03307-w
+    pmid: "42823510"
+    cite_title: Deep learning perturbation models can outperform baselines on calibrated metrics
+    year: 2026
+    scope: "Deep genetic-perturbation models against uninformative and positive-control baselines across 14 datasets and 18 metrics"
+    categories: [perturbation-models]
+    verified: true
+    notes: "Abstract only (no open full text): common metrics such as MSE and Pearson delta are often miscalibrated, and on calibrated metrics deep models can beat uninformative baselines. Models compared not checked, so no record is linked"
+
+  - id: li-2026-perturbation-models
+    name: Li et al. 2026, single-cell perturbation response models
+    doi: 10.1126/sciadv.aed3414
+    pmid: "42715312"
+    cite_title: A systematic comparison of single-cell perturbation response prediction models
+    year: 2026
+    scope: "13 models (scGPT, scFoundation, GEARS, scELMo, PerturbNet, scGen, trVAE, scVIDR, scPRAM, CPA, BioLord and others) and baselines across 25 datasets, including two primary immune-cell drug-response sets, in three tasks"
+    categories: [perturbation-models]
+    verified: true
+    notes: "PerturbNet best at recovering DE signatures in two tasks; no method generalised across cell types; models compressed variance. Evaluates: cpa"
+
+  # ---------------------------------------------------------------- platforms and preservation (T4)
+
+  - id: de-simone-2025-kit-comparison
+    name: De Simone et al. 2025, nine commercial scRNA-seq kits
+    doi: 10.1093/nar/gkae1186
+    pmid: "39675380"
+    cite_title: A comprehensive analysis framework for evaluating commercial single-cell RNA sequencing technologies
+    year: 2025
+    scope: "10x 3' v3.1, 10x 5' v2, 10x Fixed RNA Profiling (Flex), Fluent PIPseq, BD Rhapsody, Honeycomb HIVE, Parse WT v2, Scale and Scipio on PBMCs from one donor, scored on recovery, read utilisation, sensitivity, cell-type resolution, cost and time"
+    categories: [screen-design, qc-benchmarks]
+    verified: true
+    notes: "10x Flex best overall; Parse in the second tier for genes per cell and the third for UMI recovery. Evaluates: 10x-flex, split-seq-parse"
+
+  - id: abrf-2026-preservation-multisite
+    name: ABRF multisite preservation study 2026 (Kolling et al.)
+    doi: 10.7171/001c.162768
+    pmid: "42281660"
+    cite_title: Multisite Assessment of Methods for Cell Preservation Upstream of Single-Cell RNA Sequencing
+    year: 2026
+    scope: "10x Flex, Parse Evercode WT v2 and Honeycomb HIVE on fixed or cryopreserved leukocytes and PBMCs processed at several core facilities, compared with fresh 10x 3'"
+    categories: [screen-design, qc-benchmarks, batch-and-plate-effects]
+    verified: true
+    notes: "Flex and HIVE kept granulocytes better than fresh 10x 3'; Flex detected slightly more features than fresh 3' on PBMCs while HIVE and Parse detected fewer; Flex showed more cross-site variation. Evaluates: 10x-flex, split-seq-parse"
+
+  - id: xie-2024-parse-vs-10x
+    name: Xie et al. 2024, Parse versus 10x on PBMCs
+    doi: 10.3390/ijms25073828
+    pmid: "38612639"
+    cite_title: Comparative Analysis of Single-Cell RNA Sequencing Methods with and without Sample Multiplexing
+    year: 2024
+    scope: "Parse split-pool barcoding (multiplexed) against 10x 3' (not multiplexed) on PBMCs from two donors"
+    categories: [screen-design, demux-combinatorial]
+    verified: true
+    notes: "Parse detected more genes and rare types but captured a lower share of input cells. Evaluates: split-seq-parse"
+
+  - id: sarieva-2026-parse-vs-cellplex
+    name: Sarieva et al. 2026, Parse versus 10x CellPlex on organoids
+    doi: 10.1016/j.isci.2026.114780
+    pmid: "41743667"
+    cite_title: Comparing the impact of sample multiplexing approaches for single-cell RNA-sequencing on downstream analysis using cerebellar organoids
+    year: 2026
+    scope: "Parse combinatorial barcoding against 10x 3' with CellPlex multiplexing on human cerebellar organoids"
+    categories: [screen-design, demux-combinatorial]
+    verified: true
+    notes: "10x yielded more genes; Parse gave fewer stressed cells and lower mitochondrial and ribosomal fractions; both captured the same cell diversity. Evaluates: split-seq-parse"
+
+  - id: filippov-2024-thymocyte-platforms
+    name: Filippov et al. 2024, 10x versus Parse on thymocytes
+    doi: 10.1186/s12864-024-10976-x
+    pmid: "39528918"
+    cite_title: Comparative transcriptomic analyses of thymocytes using 10x Genomics and Parse scRNA-seq technologies
+    year: 2024
+    scope: "10x and Parse on biological and technical replicates of mouse thymus"
+    categories: [screen-design, demux-combinatorial]
+    verified: true
+    notes: "Parse detected nearly twice as many genes; 10x had lower technical variability and more precise annotation. Evaluates: split-seq-parse"
+
+  - id: gutierrez-franco-2023-preservation
+    name: Gutierrez-Franco et al. 2023, preservation methods for neural cells
+    doi: 10.1038/s42003-023-04834-x
+    pmid: "37188816"
+    cite_title: Methanol fixation is the method of choice for droplet-based single-cell transcriptomics of neural cells
+    year: 2023
+    scope: "Methanol, DMSO cryopreservation, ACME, vivoPHIX and CellCover against fresh cells for Drop-seq of hiPSC-derived neural and glial cells"
+    categories: [screen-design, damaged-cells, qc-benchmarks]
+    verified: true
+    notes: "Methanol kept composition closest to fresh with little expression bias; DMSO gave the most RNA per cell but shifted composition and induced stress and apoptosis genes. Evaluates: methanol-fixation"
+
+  - id: wohnhaas-2019-preservation
+    name: Wohnhaas et al. 2019, preservation methods for droplet scRNA-seq
+    doi: 10.1038/s41598-019-46932-z
+    pmid: "31337793"
+    cite_title: DMSO cryopreservation is the method of choice to preserve cells for droplet-based single-cell RNA sequencing
+    year: 2019
+    scope: "Fresh cells against DMSO cryopreservation, methanol fixation and CellCover on cell lines, monocyte-derived macrophages and immune cells"
+    categories: [screen-design, damaged-cells, qc-benchmarks]
+    verified: true
+    notes: "Cryopreservation correlated best with fresh cells; methanol fixation and CellCover raised ambient RNA and lowered correlation. Evaluates: methanol-fixation"
+
+  - id: denisenko-2020-dissociation-storage
+    name: Denisenko et al. 2020, dissociation and storage biases
+    doi: 10.1186/s13059-020-02048-6
+    pmid: "32487174"
+    cite_title: Systematic assessment of tissue dissociation and storage biases in single-cell and single-nucleus RNA-seq workflows
+    year: 2020
+    scope: "Cold and warm dissociation, fresh against cryopreserved and methanol-fixed cells, and three snRNA-seq workflows on adult mouse kidney"
+    categories: [screen-design, cell-cycle-and-stress, qc-benchmarks]
+    verified: true
+    notes: "Cryopreservation lost epithelial cell types; methanol fixation kept composition but leaked ambient RNA; warm dissociation induced stress genes. Evaluates: methanol-fixation"
+
+  # ---------------------------------------------------------------- QC-sweep-A (2026-10-24)
+
+
+  # ---------------------------------------------------------------- alignment, quantification, ambient (QC-sweep-A)
+
+  - id: bruning-2022-aligner-benchmark
+    name: Brüning et al. 2022, single-cell aligner comparison
+    doi: 10.1093/gigascience/giac001
+    pmid: "35084033"
+    cite_title: Comparative analysis of common alignment tools for single-cell RNA sequencing
+    year: 2022
+    scope: "Cell Ranger 6, STARsolo, kallisto, salmon alevin and alevin-fry on three 10x datasets (human PBMC, mouse heart after infarction, mouse endothelial atlas): whitelisting, cells, genes, runtime, clustering, DE"
+    categories: [alignment-quantification, qc-benchmarks]
+    verified: true
+    notes: "STARsolo, Cell Ranger, alevin and alevin-fry similar gene sets; kallisto most cells but many low-gene and unlabelled, extra Vmn/Olfr genes; alevin found ~50% of cardiac endothelial cells; Cell Ranger slowest. Evaluates: cellranger, starsolo, kallisto-bustools, alevin-fry"
+
+  - id: you-2021-preprocessing-benchmark
+    name: You et al. 2021, UMI preprocessing workflow benchmark
+    doi: 10.1186/s13059-021-02552-3
+    pmid: "34906205"
+    cite_title: Benchmarking UMI-based single-cell RNA-seq preprocessing workflows
+    year: 2021
+    scope: "10 workflows (Cell Ranger, Optimus, salmon alevin, alevin-fry, kallisto bustools, dropSeqPipe, scPipe, zUMIs, celseq2, scruff) on CEL-Seq2 and 10x cell-line and tissue mixtures with known labels, combined with normalisation and clustering methods"
+    categories: [alignment-quantification, qc-benchmarks]
+    verified: true
+    notes: "Preprocessing mattered less than later steps; Cell Ranger stable and high; kallisto bustools v0.39.3 unsuitable for 6-bp UMIs; emptyDrops over-called on zUMIs and kallisto output. The authors develop scPipe, so scPipe is not linked. Evaluates: cellranger, optimus, alevin-fry, kallisto-bustools, zumis"
+
+  - id: du-2020-star-kallisto
+    name: Du et al. 2020, STAR versus kallisto on scRNA-seq
+    doi: 10.1534/g3.120.401160
+    pmid: "32220951"
+    cite_title: Evaluation of STAR and Kallisto on Single Cell RNA-Seq Data Alignment
+    year: 2020
+    scope: "STAR / STARsolo versus kallisto / bustools (and Bowtie2) on Drop-seq, Fluidigm and 10x data incl. mouse cortex nuclei: gene abundance, RNA-FISH agreement, annotation, speed and memory"
+    categories: [alignment-quantification, qc-benchmarks]
+    verified: true
+    notes: "STAR more genes, higher expression, better RNA-FISH agreement; kallisto ~4x faster, 7.7x less memory. Evaluates: starsolo, kallisto-bustools"
+
+  - id: shainer-2021-kallisto-cellranger
+    name: Shainer & Stemmer 2021, kallisto versus Cell Ranger across organisms
+    doi: 10.1186/s12864-021-07930-6
+    pmid: "34521337"
+    cite_title: Choice of pre-processing pipeline influences clustering quality of scRNA-seq datasets
+    year: 2021
+    scope: "kallisto versus Cell Ranger on 22 public 10x datasets from 8 organisms: alignment rate, gene detection, cell numbers, clustering"
+    categories: [alignment-quantification, cell-calling, qc-benchmarks]
+    verified: true
+    notes: "kallisto higher alignment and gene detection; Cell Ranger more cells, low quality outside human and mouse; extra zebrafish photoreceptor type with kallisto. Evaluates: kallisto-bustools, cellranger"
+
+  - id: kuijpers-2024-splitseq-pipelines
+    name: Kuijpers et al. 2024, SPLiT-seq pipeline comparison
+    doi: 10.1186/s12864-024-10285-3
+    pmid: "38609853"
+    cite_title: Split Pool Ligation-based Single-cell Transcriptome sequencing (SPLiT-seq) data processing pipeline comparison
+    year: 2024
+    scope: "Eight SPLiT-seq pipelines (alevin-fry splitp, LR-splitpipe, SCSit, splitpipe, splitpipeline, SPLiTseq-demultiplex, STARsolo, zUMIs): runtime, barcode calls, downstream results"
+    categories: [alignment-quantification, demux-combinatorial, qc-benchmarks]
+    verified: true
+    notes: "Recommends splitpipe or STARsolo; alevin-fry splitp results hard to interpret; zUMIs slow on large data. Evaluates: starsolo, alevin-fry, zumis"
+
+  - id: schroeder-2026-ambient-benchmark
+    name: Schroeder et al. 2026, ambient RNA removal across droplet and well-plate platforms (preprint)
+    doi: 10.64898/2026.04.08.717130
+    cite_title: Benchmarking ambient RNA removal across droplet and well-plate platforms reveals artificial count generation as a critical failure mode of scAR and CellClear
+    year: 2026
+    scope: "CellBender, DecontX, SoupX, scCDC, scAR and CellClear on six human-mouse mixtures (1k-20k cells), PBMC scRNA-seq, prefrontal cortex snRNA-seq and BD Rhapsody white blood cells; sensitivity, specificity, count integrity, runtime up to 172,000 nuclei"
+    categories: [ambient-rna, qc-benchmarks]
+    verified: true
+    notes: "CellBender and SoupX reliable with minimal distortion; CellClear replaced > 93% of counts and did not scale; scAR created spurious cell types; DecontX and scCDC usable without raw droplet matrices. Evaluates: cellbender, decontx, soupx, sccdc, scar, cellclear"
+
+  - id: meier-2026-ambient-doublet-order
+    name: Meier et al. 2026, ambient correction order and doublet detection (preprint)
+    doi: 10.64898/2026.10.13.758369
+    cite_title: "Order Matters: Ambient RNA correction confounds doublet detection in single-cell RNA sequencing"
+    year: 2026
+    scope: "decontX, SoupX and CellBender applied before or after scDblFinder, scds, bcds, cxds, Scrublet and DoubletDetection on engineered and multiplexed datasets with known doublets"
+    categories: [ambient-rna, doublets, qc-benchmarks]
+    verified: true
+    notes: "Doublet detection best before ambient correction except with CellBender; decontX first retained the most doublets. Evaluates: decontx, soupx, cellbender, scdblfinder"
+
+  # ---------------------------------------------------------------- QC-sweep-B (2026-10-24)
+
+
+  # ---------------------------------------------------------------- cell cycle (QC-sweep-B)
+
+  - id: guo-2024-cell-cycle-comparison
+    name: Guo and Chen 2024, cell-cycle phase identification comparison
+    doi: 10.1093/bib/bbad517
+    pmid: "38261342"
+    cite_title: "From G1 to M: a comparative study of methods for identifying cell cycle phases"
+    year: 2024
+    scope: "Tricycle, Seurat CellCycleScoring, Revelio and CS1CC on four datasets with experimentally labelled phases (hESC FUCCI, 247 cells; mESC Quartz-Seq, 35; Hoechst-sorted mESC on C1, 288; RPE1-FUCCI, 274) and on simulations mixing single-phase cells with others; circular phase error and phase matching"
+    categories: [cell-cycle-and-stress, qc-benchmarks]
+    verified: true
+    notes: "No method consistently best; Tricycle accurate on mouse, less on human; Seurat and Revelio assign every cell to one of their phases; CS1CC relatively higher accuracy, especially for G1; adding cells of known phase to the query improved all methods. Authors independent of the Tricycle, Seurat and Revelio developers. Evaluates: tricycle, seurat-cell-cycle-scoring, revelio"
+
+  # ---------------------------------------------------------------- QC-sweep-C (2026-10-24)
+
+
+  # ---------------------------------------------------------------- scATAC feature engineering (QC-sweep-C)
+
+  - id: luo-2024-chromatin-benchmark
+    name: Luo et al. 2024, scATAC feature-engineering benchmark
+    doi: 10.1186/s13059-024-03356-x
+    pmid: "39152456"
+    cite_title: Benchmarking computational methods for single-cell chromatin data analysis
+    year: 2024
+    scope: "8 feature-engineering configurations of 5 methods (Signac LSI with two peak sets, ArchR iterative LSI on tiles or peaks, SnapATAC, SnapATAC2, aggregation) on scATAC and multiome datasets, 10 metrics at embedding, graph and partition level; per-cell QC done with ArchR TSS enrichment and fragment thresholds"
+    categories: [multimodal]
+    verified: true
+    notes: "Clustering benchmark, not a QC benchmark. SnapATAC, SnapATAC2 and aggregation beat LSI-based methods; SnapATAC and SnapATAC2 preferred for complex cell-type structure; SnapATAC2 and ArchR most scalable. Signac and ArchR embeddings stayed correlated 0.5-0.75 with library size after dropping components with |r| > 0.75, against ~0.2 for SnapATAC2 cosine and aggregation. Authors (von Meyenn lab) independent of the evaluated tools. Evaluates: snapatac2, archr, signac"
+
+  # ---------------------------------------------------------------- concepts-A (2026-10-24)
+
+
+  # ---------------------------------------------------------------- adjacent: normalisation, feature selection, integration, annotation (concepts-A)
+
+  - id: ahlmann-eltze-2023-transformation-benchmark
+    name: Ahlmann-Eltze and Huber 2023, transformation benchmark
+    doi: 10.1038/s41592-023-01814-1
+    pmid: "37037999"
+    cite_title: Comparison of transformations for single-cell RNA-seq data
+    year: 2023
+    scope: "22 transformations in four families (shifted log and other delta-method transforms, Pearson and quantile residuals, latent expression such as Sanity and Dino, factor analysis such as GLM-PCA and NewWave) on simulated and real data, scored by k-nearest-neighbour recovery"
+    categories: [normalisation]
+    verified: true
+    notes: "Shifted log of size-factor-scaled counts plus PCA as good as or better than the alternatives; Pearson residuals similar; CPM input to the shifted log poor. Evaluates: sctransform, lause-2021"
+
+  - id: ge-2025-normalisation-benchmark
+    name: Ge et al. 2025, normalisation benchmark
+    doi: 10.1371/journal.pone.0335102
+    pmid: "41411311"
+    cite_title: "Single-cell RNA-seq data normalization: A benchmarking study"
+    year: 2025
+    scope: "6 normalisation methods (Seurat log, LIGER, Dino, SCnorm, sctransform, scran) on 7 real and 4 simulated datasets, scored by clustering (ARI, AMI and others), DE precision and recall, and memory and run time"
+    categories: [normalisation]
+    verified: true
+    notes: "Dino best for 10x and large datasets, sctransform for full-length protocols, SCnorm for small datasets but the most memory. Evaluates: sctransform, scran-pooling"
+
+  - id: zappia-2025-feature-selection-benchmark
+    name: Zappia et al. 2025, feature selection for integration benchmark
+    doi: 10.1038/s41592-025-02624-3
+    pmid: "40082610"
+    cite_title: Feature selection methods affect the performance of scRNA-seq data integration and querying
+    year: 2025
+    scope: "24 feature selection methods and variants (HVG flavours, model-based scTransform, analytic Pearson residuals and scry, embedding-based, supervised markers) on ten datasets, 1,700 feature sets and over 6,000 integration runs with scVI, scANVI and Symphony; metrics for batch removal, bio-conservation, query mapping, label transfer and unseen populations"
+    categories: [feature-selection, integration]
+    verified: true
+    notes: "Seurat-VST (scanpy seurat_v3) top-ranked, about 2,000 features recommended, no consistent gain from batch-aware scanpy variants. Shares authors with luecken-2022-scib-benchmark, so not linked to scvi-tools. Evaluates: lause-2021, townes-2019"
+
+  - id: luecken-2022-scib-benchmark
+    name: Luecken et al. 2022 (scIB), atlas-level integration benchmark
+    doi: 10.1038/s41592-021-01336-8
+    pmid: "34949812"
+    cite_title: Benchmarking atlas-level data integration in single-cell genomics
+    year: 2022
+    scope: "16 integration methods in 68 method and preprocessing combinations (with and without HVG selection and scaling) on 13 tasks: 85 batches of scRNA-seq, scATAC-seq and simulations, over 1.2 million cells, 14 metrics"
+    categories: [integration, feature-selection]
+    verified: true
+    notes: "scANVI, Scanorama, scVI and scGen best overall; Harmony and LIGER effective on scATAC-seq; HVG selection improved 74% of comparisons; scaling favoured batch removal over bio-conservation. scvi-tools linked through its primary scVI paper (Lopez 2018), which shares no author. Evaluates: harmony, scvi-tools, scanorama, seurat-integration, fastmnn, bbknn"
+
+  - id: tran-2020-batch-benchmark
+    name: Tran et al. 2020, batch-effect correction benchmark
+    doi: 10.1186/s13059-019-1850-9
+    pmid: "31948481"
+    cite_title: A benchmark of batch-effect correction methods for single-cell RNA sequencing data
+    year: 2020
+    scope: "14 batch-correction methods on ten datasets in five scenarios (identical cell types across technologies, non-identical cell types, multiple batches, over half a million cells, simulated DE) with kBET, LISI, ASW and ARI"
+    categories: [integration]
+    verified: true
+    notes: "Harmony, LIGER and Seurat 3 recommended, Harmony first for runtime. Evaluates: harmony, seurat-integration, fastmnn, bbknn, scanorama"
+
+  - id: abdelaal-2019-annotation-benchmark
+    name: Abdelaal et al. 2019, automatic cell identification benchmark
+    doi: 10.1186/s13059-019-1795-z
+    pmid: "31500660"
+    cite_title: A comparison of automatic cell identification methods for single-cell RNA sequencing data
+    year: 2019
+    scope: "22 supervised and prior-knowledge classifiers on 27 scRNA-seq datasets, intra-dataset (5-fold) and inter-dataset prediction, with feature-number, cell-number, annotation-depth and rejection experiments"
+    categories: [clustering-annotation]
+    verified: true
+    notes: "Linear SVM best overall; SingleR among the top five at deep brain annotation but slowest. Evaluates: singler"
+
+  # ---------------------------------------------------------------- concepts-B (2026-10-24)
+
+
+  # ---------------------------------------------------------------- downstream concepts (concepts-B)
+  # PubMed esummary title and DOI fetched 2026-10-24; DOI is the one PubMed lists for the PMID.
+
+  - id: yi-2024-da-benchmark
+    name: Yi, Plotkin and Stanley 2024, differential abundance benchmark
+    doi: 10.1186/s13059-023-03143-0
+    pmid: "38172966"
+    cite_title: Benchmarking differential abundance methods for finding condition-specific prototypical cells in multi-sample single-cell datasets.
+    year: 2024
+    scope: "6 differential abundance methods (Milo, Meld, DA-seq, Cydar, Cna, Louvain clusters) on synthetic and real datasets: detection of true DA subpopulations, handling of batch effects, runtime, hyperparameter robustness"
+    categories: [de-pseudobulk, batch-and-plate-effects]
+    verified: true
+    notes: "Meld and Milo robust and top 2 on synthetic and real data; Milo best across batch-effect magnitudes and needs fewest hyperparameters. Evaluates: milo"
+
+  - id: saelens-2019-ti-benchmark
+    name: Saelens et al. 2019, trajectory inference benchmark (dynverse)
+    doi: 10.1038/s41587-019-0071-9
+    pmid: "30936559"
+    cite_title: A comparison of single-cell trajectory inference methods.
+    year: 2019
+    url: https://benchmark.dynverse.org
+    scope: "45 trajectory inference methods on 110 real and 229 synthetic datasets, scored on cellular ordering, topology, scalability and usability"
+    categories: [trajectories]
+    verified: true
+    notes: "Method choice depends mostly on dataset size and topology. Authors' results data (github dynverse/dynbenchmark_results, 08-summary, February 2019): Slingshot highest overall accuracy (0.706), then PAGA Tree and SCORPIUS. Preprint (29 methods): Slingshot most accurate overall, then TSCAN and Monocle DDRTree. Evaluates: slingshot. Also a record (saelens-2019)"
+
+  - id: wu-2026-velocity-benchmark
+    name: Wu et al. 2026, RNA velocity benchmark (30 methods)
+    doi: 10.1186/s13059-026-04182-z
+    pmid: "42509564"
+    cite_title: Comprehensive benchmarking of RNA velocity methods across single-cell datasets.
+    year: 2026
+    scope: "19 tools (30 methods) on 34 datasets (26 real, 8 simulated): directional consistency, temporal precision, negative-control robustness, depth stability, stability across 5 spliced/unspliced quantifiers, multimodal integration, scalability"
+    categories: [trajectories]
+    verified: true
+    notes: "Only 3 of 22 splicing-based methods robust across quantifiers; recommends SDEvelo, Velocyto, scVelo (stc), DeepVelo, veloVI. Authors co-wrote SDEvelo and TIVelo (not linked to those). Evaluates: velocyto, scvelo"
+
+  - id: luo-2026-velocity-benchmark
+    name: Luo et al. 2026, RNA velocity benchmark (15 methods, 17 datasets)
+    doi: 10.1016/j.crmeth.2026.101367
+    pmid: "41916302"
+    cite_title: Benchmarking RNA velocity methods across 17 independent studies.
+    year: 2026
+    scope: "15 RNA velocity methods (ODE, machine learning and deep learning) on 17 datasets, scored on accuracy, stability under downsampling and usability"
+    categories: [trajectories]
+    verified: true
+    notes: "No method best in all assessments; scVelo-sto, veloVI, DeepVelo, Dynamo-sto recommended for million-cell data; velocyto declined in downsamples. Evaluates: scvelo, velocyto, cellrank"
+
+  - id: hu-2024-multiomics-benchmark
+    name: Hu et al. 2024, multi-omics prediction and integration benchmark
+    doi: 10.1038/s41592-024-02429-w
+    pmid: "39322753"
+    cite_title: Benchmarking algorithms for single-cell multi-omics prediction and integration.
+    year: 2024
+    scope: "14 protein-abundance or chromatin-accessibility prediction algorithms and 18 integration algorithms (vertical, horizontal, mosaic) on 47 single-cell multi-omics datasets"
+    categories: [multimodal]
+    verified: true
+    notes: "totalVI and scArches best for protein prediction; Seurat, MOJITOO, scAI lead vertical integration; totalVI and UINMF lead horizontal and mosaic. The Seurat run was WNN (FindMultiModalNeighbors, Seurat 4.3.0.1; authors' repository QuKunLab/MultiomeBenchmarking). Evaluates: totalvi, seurat-wnn"

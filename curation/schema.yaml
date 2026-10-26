@@ -1,0 +1,105 @@
+# Record schema for curation/records/*.yaml (the hand-written layer; never generated).
+# Each records file is a YAML list under the key `records:`. pipeline/build.py validates every record
+# against this file; tests/test_schema.py fails on any unknown value.
+
+required: [id, name, kind, layer, categories, side, tier, summary]
+
+fields:
+  id:          "unique slug, lowercase, [a-z0-9-]; stable once published"
+  name:        "display name (tool, method, paper short name, or concept)"
+  kind:        "one of kinds"
+  layer:       "one of layers"
+  categories:  "list of category keys; the first is the primary category"
+  side:        "one of sides"
+  tier:        "one of tiers"
+  summary:     "one sentence: what it is / does, facts only, no trailing full stop"
+  recovers:    "additive side: what it salvages or improves (cells, signal, power); omit if none"
+  gain:        "reported gain with its number and setting, e.g. '+12% singlets vs HTODemux on 8-plex PBMC'"
+  gain_source: "one of gain_sources; who measured the gain"
+  requires:    "list of requires keys: the data the method needs"
+  caveats:     "known failure modes, assumptions, or disputes (short)"
+  url:         "homepage or canonical landing page"
+  repo:        "owner/name on GitHub/GitLab, if any"
+  language:    "R | Python | C++ | Rust | Java | web | multiple"
+  doi:         "primary publication DOI, bare (10.xxxx/...)"
+  pmid:        "primary publication PMID"
+  cite_title:  "title of the primary publication, copied from PubMed/Crossref when it was verified"
+  year:        "publication year of the primary paper"
+  verified:    "true only if doi/pmid were fetched and cite_title matched; else false"
+  papers:      "extra papers: list of 'pmid:NNN' or 'doi:10....'"
+  benchmarks:  "ids in curation/benchmarks.yaml that evaluated this record"
+  qc_links:    "adjacent layer: list of {category, effect} saying how QC choices affect this concept"
+  track:       "research track that wrote it: T1..T5, QC-sweep, concepts"
+  review:      "anchor in docs/review, e.g. 01-demux-recovery#demuxmix"
+  tags:        "free-form facets (hashing, genotype, drug-screen, nuclei, fixed, ...)"
+
+layers:
+  core:     "single-cell QC and preprocessing: covered comprehensively"
+  adjacent: "neighbouring scRNA-seq concepts: mapped at lighter depth, with qc_links"
+
+kinds:
+  tool:       "software you can run"
+  method:     "an analysis approach without a dedicated tool (or with many implementations)"
+  evidence:   "a study whose finding matters (benchmark, survey, large-scale comparison, cautionary result)"
+  design:     "an experimental design or protocol choice"
+  concept:    "an adjacent-layer concept node"
+  hypothesis: "a proposed but untested idea, or one tested only anecdotally"
+
+sides:
+  additive:    "keeps or recovers cells, or extracts more signal from the cells kept"
+  subtractive: "removes cells, genes or signal judged to be artefact"
+  both:        "does either depending on use (e.g. ambient removal lets cells be kept)"
+  neutral:     "neither (concepts, designs that change what is measured)"
+
+tiers:
+  standard:                "default practice in widely used pipelines and best-practice guides"
+  benchmarked-sota:        "outperformed alternatives in at least one independent benchmark"
+  benchmarked:             "evaluated in at least one independent benchmark without being among the best (or with mixed results)"
+  published-unbenchmarked: "peer-reviewed or preprinted, not yet independently benchmarked"
+  hypothesis:              "proposed, plausible, untested or anecdotal; doi/pmid optional"
+
+gain_sources:
+  independent:   "measured by a benchmark or study by other authors"
+  self-reported: "measured by the method's own authors"
+  none:          "no quantitative gain reported"
+
+requires:
+  filtered-matrix:   "cellranger/STARsolo filtered count matrix"
+  raw-matrix:        "all barcodes incl. empty droplets (raw_feature_bc_matrix)"
+  tag-counts:        "hashtag / lipid / CMO tag count matrix"
+  bam:               "aligned reads (BAM/CRAM)"
+  fastq:             "raw reads (re-alignment needed)"
+  genotypes:         "known or inferable genotypes (SNP VCF, multiple donors or cell lines)"
+  spliced-unspliced: "spliced / unspliced counts (velocyto, STARsolo Velocyto, alevin-fry USA mode)"
+  replicates:        "biological replicates (wells, donors, cultures) per condition"
+  reference:         "reference profiles or annotated atlas"
+  doses-or-time:     "a dose or time series across conditions"
+  multiple-conditions: "many conditions to share information across (drugs, perturbations)"
+  protein:           "antibody-derived protein counts (CITE-seq)"
+
+categories:
+  # --- core: QC and preprocessing ---------------------------------------------------------------
+  demux-hashing:          {layer: core, title: "Hashing demultiplexing", desc: "Assigning cells to samples from hashtag, lipid or CMO tags; tag-count models"}
+  demux-genotype:         {layer: core, title: "Genotype demultiplexing", desc: "Assigning cells to donors or cell lines from SNPs; hybrids with hashing"}
+  demux-combinatorial:    {layer: core, title: "Combinatorial indexing & split-pool", desc: "sci-, SPLiT-, Parse-style barcoding and nuclear hashing; their calling and collisions"}
+  alignment-quantification: {layer: core, title: "Alignment & quantification", desc: "Read alignment, barcode and UMI correction, count matrices; the choices that set what cell calling sees"}
+  cell-calling:           {layer: core, title: "Cell calling", desc: "Separating cells from empty droplets; low-RNA cell recovery"}
+  ambient-rna:            {layer: core, title: "Ambient RNA", desc: "Estimating and removing ambient / soup contamination"}
+  qc-metrics-thresholds:  {layer: core, title: "QC metrics & thresholds", desc: "Counts, genes, mito and ribo fractions; fixed, adaptive and data-driven thresholds"}
+  damaged-cells:          {layer: core, title: "Damaged & dying cells", desc: "Detecting damaged, lysed or apoptotic cells (nuclear fraction, splicing, states)"}
+  doublets:               {layer: core, title: "Doublets & multiplets", desc: "Detecting, estimating and rescuing doublets (RNA-based and tag-based)"}
+  cell-cycle-and-stress:  {layer: core, title: "Cell cycle & stress signatures", desc: "Dissociation, handling and cell-cycle effects and their correction"}
+  batch-and-plate-effects: {layer: core, title: "Batch, lane & plate effects", desc: "Technical effects of lanes, plates, wells and processing batches"}
+  low-cell-stats:         {layer: core, title: "Statistics with few cells", desc: "Pseudobulk weighting, minimum cells, borrowing strength across conditions, power"}
+  screen-design:          {layer: core, title: "Multiplexed screen design", desc: "Experimental designs that change how many usable cells and replicates a screen yields"}
+  discarded-data:         {layer: core, title: "Using discarded data", desc: "Ideas that turn removed barcodes (doublets, damaged cells, empty droplets) into signal"}
+  qc-benchmarks:          {layer: core, title: "QC benchmarks & guides", desc: "Benchmarks and best-practice guides that compare QC choices"}
+  # --- adjacent concept map ---------------------------------------------------------------------
+  normalisation:          {layer: adjacent, title: "Normalisation", desc: "Size factors, transformations, variance stabilisation"}
+  feature-selection:      {layer: adjacent, title: "Feature selection", desc: "Highly variable / deviant genes"}
+  integration:            {layer: adjacent, title: "Integration & batch correction", desc: "Removing batch effects while keeping biology"}
+  clustering-annotation:  {layer: adjacent, title: "Clustering & annotation", desc: "Graph clustering, label transfer, marker-based annotation"}
+  de-pseudobulk:          {layer: adjacent, title: "Differential expression", desc: "Pseudobulk, mixed models, differential abundance"}
+  perturbation-models:    {layer: adjacent, title: "Perturbation modelling", desc: "Response estimation and prediction for drugs and genetic perturbations"}
+  trajectories:           {layer: adjacent, title: "Trajectories & RNA velocity", desc: "Pseudotime, velocity, fate"}
+  multimodal:             {layer: adjacent, title: "Multimodal", desc: "CITE-seq, multiome, spatial links to QC"}

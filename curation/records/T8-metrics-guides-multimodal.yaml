@@ -1,0 +1,824 @@
+# Track QC-sweep-C: QC metrics and thresholds, damaged cells, guides, and modality-specific QC
+# (CITE-seq/ADT, scATAC and multiome, single-nucleus, spatial). Hand-written layer; see
+# docs/review/13-metrics-guides-multimodal.md.
+records:
+# ---------------------------------------------------------------- QC metrics and thresholds
+- id: sampleqc
+  name: SampleQC
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds]
+  side: both
+  tier: published-unbenchmarked
+  summary: Fits a robust Gaussian mixture to per-cell QC metrics jointly across groups of samples with similar QC
+    distributions, so each QC cell type gets its own component and outliers are called per component
+  recovers: rare cell types whose QC metrics differ from the dominant type, which single-population outlier rules remove
+  gain: in simulations the good cells wrongly excluded by miQC and scater-style MAD rules came almost entirely from one cell
+    type, while SampleQC better preserved rare QC cell-type proportions; ran on 867k nuclei from 172 brain snRNA-seq samples
+  gain_source: self-reported
+  requires: [filtered-matrix, replicates]
+  caveats: The authors note the simulation result depends on their design choices; the number of mixture components k is
+    chosen per sample group by the user; QClus' own comparison on heart nuclei included SampleQC among seven alternatives
+    it outperformed (self-reported by QClus). Repository last updated 2022.
+  url: https://github.com/wmacnair/SampleQC
+  repo: wmacnair/SampleQC
+  language: R
+  doi: 10.1186/s13059-023-02859-3
+  pmid: '36765378'
+  cite_title: 'SampleQC: robust multivariate, multi-cell type, multi-sample quality control for single-cell data'
+  year: 2023
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#sampleqc
+  tags: [mixture-model, multi-sample, nuclei]
+- id: scuttle
+  name: scuttle (per-cell QC metrics, Bioconductor)
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds]
+  side: both
+  tier: standard
+  summary: Bioconductor package that computes per-cell and per-feature QC metrics (library size, detected genes, subset
+    percentages such as mito) and flags outliers with MAD rules via perCellQCMetrics, isOutlier and quickPerCellQC
+  recovers: cells kept by batch-aware MAD thresholds instead of fixed cut-offs (see mad-adaptive-qc)
+  gain: none of its own; it is the implementation the OSCA book and many Bioconductor pipelines use for adaptive QC
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Split out of scater in 2020 and has no paper of its own, so the scater paper is cited; outlier calls inherit the
+    MAD caveats of [[mad-adaptive-qc]] (whole cell types with extreme healthy values can be removed if run on a mixed
+    population without a batch or type block).
+  url: https://bioconductor.org/packages/scuttle
+  repo: LTLA/scuttle
+  language: R
+  doi: 10.1093/bioinformatics/btw777
+  pmid: '28088763'
+  cite_title: 'Scater: pre-processing, quality control, normalization and visualization of single-cell RNA-seq data in R'
+  year: 2017
+  verified: true
+  papers: [pmid:31792435]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#scuttle
+  tags: [bioconductor, best-practice, mad]
+- id: sctk-qc
+  name: SCTK-QC (singleCellTK)
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, cell-calling, doublets, ambient-rna]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Pipeline in the singleCellTK R package that runs empty-droplet detection, standard QC metrics, several doublet
+    callers and ambient RNA estimation on one dataset and writes an HTML report, from the command line, R or a GUI
+  recovers: nothing by itself; puts several callers side by side so that their disagreement is visible before filtering
+  gain: none reported as cells retained; GUI benchmarked on 34k and 68k PBMC datasets for run time
+  gain_source: none
+  requires: [raw-matrix]
+  caveats: A wrapper; each step has the caveats of the tool it calls (EmptyDrops, barcodeRanks, scDblFinder, cxds, bcds,
+    DoubletFinder, scrublet, DecontX, SoupX). DoubletFinder dominates memory use on large data.
+  url: https://bioconductor.org/packages/singleCellTK
+  repo: compbiomed/singleCellTK
+  language: R
+  doi: 10.1038/s41467-022-29212-9
+  pmid: '35354805'
+  cite_title: Comprehensive generation, visualization, and reporting of quality control metrics for single-cell RNA sequencing
+    data
+  year: 2022
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#sctk-qc
+  tags: [report, wrapper, bioconductor, gui]
+- id: scrnabatchqc
+  name: scRNABatchQC
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, batch-and-plate-effects]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: R package that compares many samples at once on technical and biological features (library size, mito,
+    highly variable genes, pathway enrichment) in one HTML report to find outlier samples and batch effects
+  recovers: whole samples or lanes that would otherwise be judged one at a time and either kept with a defect or discarded
+  gain: none quantified
+  gain_source: none
+  requires: [filtered-matrix, replicates]
+  caveats: Diagnostic only, no filtering model; repository last updated 2021.
+  url: https://github.com/liuqivandy/scRNABatchQC
+  repo: liuqivandy/scRNABatchQC
+  language: R
+  doi: 10.1093/bioinformatics/btz601
+  pmid: '31373345'
+  cite_title: 'scRNABatchQC: multi-samples quality control for single cell RNA-seq data'
+  year: 2019
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#scrnabatchqc
+  tags: [report, multi-sample]
+- id: scqcea
+  name: scQCEA
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: R package that writes an interactive QC report across sets of 10x samples and adds expression-based QC through
+    cell-type enrichment against 2,348 marker genes for 95 human and mouse cell types
+  recovers: a check that a library carries recognisable cell types before it is judged on counts alone
+  gain: used 342 shallow-sequenced profiles to set minimum sequencing for its enrichment function; no retention numbers
+  gain_source: none
+  requires: [filtered-matrix, reference]
+  caveats: Report and annotation tool rather than a filter; repository last updated 2023.
+  url: https://isarnassiri.github.io/scQCEA/
+  repo: isarnassiri/scQCEA
+  language: R
+  doi: 10.1186/s12864-023-09447-6
+  pmid: '37415108'
+  cite_title: 'scQCEA: a framework for annotation and quality control report of single-cell RNA-sequencing data'
+  year: 2023
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#scqcea
+  tags: [report, annotation]
+- id: skewc
+  name: SkewC
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, damaged-cells]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Flags cells whose gene-body read coverage is skewed relative to the protocol's typical profile, a QC signal
+    independent of counts and mito fraction
+  recovers: none; removes cells that would otherwise form false clusters
+  gain: none quantified in the abstract
+  gain_source: none
+  requires: [bam]
+  caveats: Most informative for full-length protocols (Smart-seq); 3' tag protocols have coverage piled at one end by
+    design. Repository last updated 2023.
+  url: https://github.com/LSBDT/SkewC
+  repo: LSBDT/SkewC
+  doi: 10.1016/j.isci.2022.103777
+  pmid: '35146392'
+  cite_title: 'SkewC: Identifying cells with skewed gene body coverage in single-cell RNA sequencing data'
+  year: 2022
+  verified: true
+  papers: [pmid:36853658]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#skewc
+  tags: [full-length, coverage]
+- id: sinqc
+  name: SinQC
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Flags technical-artefact cells whose gene expression pattern is inconsistent with their data-quality metrics
+    (mapping rate, library size, detected genes), for plate-based full-length data
+  recovers: none; removes artefact cells
+  gain: applied to nine datasets; no retention numbers in the abstract
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Built for early low-throughput plate data (2016); no public code repository found, only a lab web page.
+  url: http://www.morgridge.net/SinQC.html
+  doi: 10.1093/bioinformatics/btw176
+  pmid: '27153613'
+  cite_title: Quality control of single-cell RNA-seq by SinQC
+  year: 2016
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#sinqc
+  tags: [plate, legacy]
+- id: qcatch
+  name: QCatch
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, cell-calling]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Command-line tool that takes alevin-fry or simpleaf output, calls cells and writes an interactive HTML QC report
+    (UMI distributions, sequencing saturation, splicing status) plus an annotated h5ad
+  recovers: none by itself; gives alevin-fry users the cell calling and QC report Cell Ranger users get by default
+  gain: none quantified
+  gain_source: none
+  requires: [spliced-unspliced]
+  caveats: Tied to the alevin-fry ecosystem; its cell calling has not been benchmarked against EmptyDrops-style callers.
+  url: https://github.com/COMBINE-lab/QCatch
+  repo: COMBINE-lab/QCatch
+  language: Python
+  doi: 10.1093/bioinformatics/btag184
+  pmid: '41987571'
+  cite_title: 'QCatch: a framework for quality control assessment and analysis of single-cell sequencing data'
+  year: 2026
+  verified: true
+  papers: [pmid:40667252]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#qcatch
+  tags: [report, alevin-fry]
+- id: singlecellmqc
+  name: SingleCellMQC
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: both
+  tier: published-unbenchmarked
+  summary: R package for QC at sample, cell, feature and batch level across scRNA-seq, antibody-derived tags and TCR/BCR
+    data, combining fixed thresholds, tissue-specific reference ranges and data-driven outliers in an HTML report
+  recovers: one QC pass over all modalities, so a cell is not dropped for one modality's failure without that being visible
+  gain: demonstrated on a 28,498-cell PBMC multi-omics dataset, a 137,214-cell PBMC dataset and a breast atlas of over 1
+    million cells; no comparison of cells retained
+  gain_source: none
+  requires: [filtered-matrix, protein]
+  caveats: New (2026); built on Seurat and BPCells; its ADT doublet and threshold choices have not been independently
+    evaluated.
+  url: https://github.com/WenZhong-Lab/SingleCellMQC
+  repo: WenZhong-Lab/SingleCellMQC
+  language: R
+  doi: 10.1016/j.isci.2026.117398
+  pmid: '42733637'
+  cite_title: 'SingleCellMQC: A comprehensive quality control workflow for single-cell multi-omics'
+  year: 2026
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#singlecellmqc
+  tags: [citeseq, protein, vdj, report]
+- id: qclus
+  name: QClus
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, cell-calling, ambient-rna]
+  side: both
+  tier: published-unbenchmarked
+  summary: Droplet filter for difficult single-nucleus samples that clusters nuclei on unspliced fraction, mito fraction
+    and cell-type marker scores and removes empty and highly contaminated droplets
+  recovers: usable nuclei from high-ambient tissue (human heart) where count thresholds either keep contaminated droplets or
+    remove too many nuclei
+  gain: against seven alternatives (Cell Ranger 7, CellBender, SampleQC, DIEM, DecontX, DropletQC, EmptyNN) on 6 datasets,
+    252 samples and over 1.9 million nuclei, highest quality in the most samples on all metrics and no processing failures
+  gain_source: self-reported
+  requires: [raw-matrix, spliced-unspliced]
+  caveats: The comparison is the authors' own; default marker set and the initial filter (>= 500 genes, mito < 40%) are
+    tuned for cardiac tissue and need changing elsewhere.
+  url: https://github.com/linnalab/qclus
+  repo: linnalab/qclus
+  language: Python
+  doi: 10.1093/nar/gkae1145
+  pmid: '39656909'
+  cite_title: 'QClus: a droplet filtering algorithm for enhanced snRNA-seq data quality in challenging samples'
+  year: 2025
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#qclus
+  tags: [nuclei, heart, nuclear-fraction]
+- id: boloori-2026
+  name: Boloori et al. 2026 gamma delta T cell counts vs QC choices
+  kind: evidence
+  layer: core
+  categories: [qc-metrics-thresholds, qc-benchmarks]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Re-analysis of a public 3' snRNA-seq dataset of 33,600 small-intestine nuclei showing how calling strategy and
+    QC stringency change the recovered fraction of one rare cell type
+  gain: gamma delta T fraction ranged 3.38-12.49% on the deposited matrix and 5.46-21.62% under strict filtering, a 3.70-
+    to 4.08-fold spread; within one QC stratum the call rate rose from 0.51% to 12.17% across deciles of genes per nucleus
+  gain_source: independent
+  caveats: One dataset and one cell type; abstract-level numbers (no open full text found).
+  doi: 10.1016/j.jim.2026.114126
+  pmid: '42802005'
+  cite_title: 'How many gamma delta T cells are there? Calling strategy, quality control and receptor-locus specificity in
+    3-prime single-nucleus RNA sequencing of human small intestine'
+  year: 2026
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#boloori-2026
+  tags: [nuclei, rare-cell-type, cautionary]
+# ---------------------------------------------------------------- damaged cells
+- id: cellity
+  name: cellity
+  kind: tool
+  layer: core
+  categories: [damaged-cells, qc-metrics-thresholds]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Support vector machine trained on over 20 biological and technical features, with microscopy-annotated broken,
+    empty and multiple-cell capture sites as labels, that classifies low-quality cells
+  recovers: none; removes broken and empty captures that count thresholds miss
+  gain: over 30% higher classification accuracy than traditional threshold methods on about 5,000 Fluidigm C1 cells (CD4+ T
+    cells, BMDCs, mESCs); SVM specificity 20-30% higher than unsupervised alternatives
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Trained on C1 plate data with imaging ground truth; transfer to droplet data is untested. Repository last
+    updated 2016, though the package remains in Bioconductor (release 3.23).
+  url: https://bioconductor.org/packages/cellity
+  repo: Teichlab/cellity
+  language: R
+  doi: 10.1186/s13059-016-0888-1
+  pmid: '26887813'
+  cite_title: Classification of low quality cells from single-cell RNA-seq data
+  year: 2016
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#cellity
+  tags: [plate, supervised, ground-truth-imaging]
+- id: montserrat-ayuso-2024
+  name: Montserrat-Ayuso & Esteve-Codina 2024 nuclear fraction in reference atlases
+  kind: evidence
+  layer: core
+  categories: [damaged-cells, qc-benchmarks]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Re-analysis of six reference atlases using intronic (nuclear) fraction and MALAT1 expression to find nuclei-free,
+    low-quality cells left in after the atlases' own QC
+  gain: 6 atlases (Tabula Muris, Tabula Muris Senis, Tabula Sapiens, HCA liver and retina, a mouse kidney atlas), over 500
+    samples, 150 cell types and 20 tissues; some organs carry up to 85% low-quality cells
+  gain_source: independent
+  caveats: Argues for stricter filtering, the opposite direction to the salvage literature; the two agree that the deciding
+    metric should be nuclear fraction, not mito or counts.
+  doi: 10.1186/s12864-024-11015-5
+  pmid: '39574015'
+  cite_title: 'High content of nuclei-free low-quality cells in reference single-cell atlases: a call for more stringent quality
+    control using nuclear fraction'
+  year: 2024
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#montserrat-ayuso-2024
+  tags: [nuclear-fraction, malat1, atlas, cautionary]
+- id: malat1-quality-marker
+  name: MALAT1 as a cell-quality marker (Clarke & Bader 2024)
+  kind: method
+  layer: core
+  categories: [damaged-cells, qc-metrics-thresholds]
+  side: both
+  tier: published-unbenchmarked
+  summary: Uses expression of MALAT1, a nuclear-retained non-coding RNA expressed in nearly all cell types, as a cheap proxy
+    for the spliced/unspliced ratio to spot empty droplets and cytoplasm-poor cells
+  recovers: a damage signal without re-reading BAMs for spliced and unspliced counts
+  gain: MALAT1 expression was strongly correlated with the splice-ratio measure (preprint; no number in the abstract)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Preprint; applies only to species with a conserved MALAT1; single-nucleus data are nuclear by design, so a high
+    MALAT1 there does not mark damage.
+  url: https://www.biorxiv.org/content/10.1101/2024.07.14.603469
+  doi: 10.1101/2024.07.14.603469
+  cite_title: MALAT1 expression indicates cell quality in single-cell RNA sequencing data
+  year: 2024
+  verified: true
+  papers: [pmid:39574015]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#malat1-quality-marker
+  tags: [preprint, malat1, nuclear-fraction]
+# ---------------------------------------------------------------- guides and frameworks
+- id: luecken-theis-2019
+  name: Luecken & Theis 2019 best-practice tutorial
+  kind: evidence
+  layer: core
+  categories: [qc-benchmarks]
+  side: neutral
+  tier: standard
+  summary: Tutorial and review that sets out a scRNA-seq workflow from QC to downstream analysis with recommendations drawn
+    from independent comparison studies, applied to a public dataset
+  gain: recommended permissive, per-sample QC thresholds judged jointly on counts, genes and mito, and revisiting QC after
+    clustering
+  gain_source: none
+  caveats: Superseded for most steps by the 2023 scverse guide ([[heumos-2023]]); fixed example thresholds in the case study
+    are often copied without the joint-inspection advice.
+  url: https://github.com/theislab/single-cell-tutorial
+  repo: theislab/single-cell-tutorial
+  doi: 10.15252/msb.20188746
+  pmid: '31217225'
+  cite_title: 'Current best practices in single-cell RNA-seq analysis: a tutorial'
+  year: 2019
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#luecken-theis-2019
+  tags: [guide, best-practice, scanpy]
+- id: heumos-2023
+  name: Heumos et al. 2023 scverse best practices across modalities
+  kind: evidence
+  layer: core
+  categories: [qc-benchmarks, multimodal]
+  side: neutral
+  tier: standard
+  summary: Review and online book (sc-best-practices.org) that summarises independent benchmarks into recommended workflows
+    for scRNA-seq, scATAC-seq, CITE-seq, immune repertoire and spatial data
+  gain: QC defaults of 5 MADs on log counts, log genes and top-20-gene share, mito flagged only when > 3 MADs and > 8%;
+    SoupX for ambient RNA; scDblFinder for doublets; for ATAC, TSS enrichment, fragment counts and nucleosome signal
+  gain_source: none
+  caveats: Where no independent benchmark exists the guide contrasts popular tools rather than ranking them; QC thresholds
+    are defaults, not tested on treated or stressed cells.
+  url: https://www.sc-best-practices.org
+  repo: theislab/single-cell-best-practices
+  doi: 10.1038/s41576-023-00586-w
+  pmid: '37002403'
+  cite_title: Best practices for single-cell analysis across modalities
+  year: 2023
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#heumos-2023
+  tags: [guide, best-practice, scverse, scanpy]
+- id: osca
+  name: OSCA, Orchestrating Single-Cell Analysis with Bioconductor
+  kind: evidence
+  layer: core
+  categories: [qc-benchmarks]
+  side: neutral
+  tier: standard
+  summary: Paper and online book describing the Bioconductor single-cell workflow, including per-batch MAD outlier QC with
+    scuttle, EmptyDrops cell calling, doublet scoring and ADT-specific QC
+  gain: QC chapter flags 3-MAD outliers within batch and recommends checking discarded cells for lost cell types by
+    comparing their average profile with kept cells
+  gain_source: none
+  caveats: The book is updated continuously, so its defaults may differ from the 2020 paper.
+  url: https://bioconductor.org/books/release/OSCA/
+  doi: 10.1038/s41592-019-0654-x
+  pmid: '31792435'
+  cite_title: Orchestrating single-cell analysis with Bioconductor
+  year: 2020
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#osca
+  tags: [guide, best-practice, bioconductor]
+- id: andrews-2021-tutorial
+  name: Andrews et al. 2021 Nature Protocols scRNA-seq tutorial
+  kind: evidence
+  layer: core
+  categories: [qc-benchmarks]
+  side: neutral
+  tier: standard
+  summary: Tutorial and companion course (Hemberg lab) covering the computational workflow for scRNA-seq from QC to
+    biological interpretation, with guidance on choosing tools at each step
+  gain: none (guide)
+  gain_source: none
+  caveats: Course material predates the 2023 adaptive-QC and ambient benchmarks.
+  url: https://www.singlecellcourse.org
+  doi: 10.1038/s41596-020-00409-w
+  pmid: '33288955'
+  cite_title: 'Tutorial: guidelines for the computational analysis of single-cell RNA sequencing data'
+  year: 2021
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#andrews-2021-tutorial
+  tags: [guide, course]
+- id: de-rop-2024
+  name: De Rop et al. 2024 scATAC-seq protocol benchmark
+  kind: evidence
+  layer: core
+  categories: [qc-benchmarks, multimodal]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Independent comparison of eight scATAC-seq methods in 47 experiments on reference PBMCs, processed with one
+    pipeline (PUMATAC), measuring library complexity, TSS enrichment and fraction of fragments in peaks
+  gain: 169,000 PBMC profiles; methods differed in library complexity and tagmentation specificity, which carried through
+    to cell-type annotation, genotype demultiplexing, peak calling, differential accessibility and motif enrichment
+  gain_source: independent
+  caveats: One sample type (PBMC); protocols and kits change quickly, so rankings age.
+  repo: aertslab/PUMATAC
+  doi: 10.1038/s41587-023-01881-x
+  pmid: '37537502'
+  cite_title: Systematic benchmarking of single-cell ATAC-sequencing protocols
+  year: 2024
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#de-rop-2024
+  tags: [atac, benchmark, protocol]
+- id: martinez-de-morentin-2026
+  name: Martinez-de-Morentin et al. 2026 spatial segmentation benchmark
+  kind: evidence
+  layer: core
+  categories: [qc-benchmarks, multimodal]
+  side: neutral
+  tier: published-unbenchmarked
+  summary: Benchmark of 11 image-based, transcript-based and multimodal cell segmentation methods on 15 datasets from 5
+    imaging spatial transcriptomics technologies and 12 tissue types
+  gain: performance varied widely across datasets, technologies and metrics; segmentation choice changed cell-type
+    specificity, transcript contamination between neighbouring cells and ligand-receptor inference
+  gain_source: independent
+  caveats: No single method wins; segmentation is the cell-calling step of imaging spatial data, so its errors look like
+    doublets and ambient contamination downstream.
+  doi: 10.1038/s41592-026-03272-x
+  pmid: '42919952'
+  cite_title: Benchmarking segmentation methods for spatial transcriptomics
+  year: 2026
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#martinez-de-morentin-2026
+  tags: [spatial, segmentation, benchmark]
+# ---------------------------------------------------------------- CITE-seq / ADT
+- id: adtnorm
+  name: ADTnorm
+  kind: tool
+  layer: core
+  categories: [batch-and-plate-effects, multimodal, normalisation]
+  side: additive
+  tier: published-unbenchmarked
+  summary: Normalises antibody-derived tag counts by aligning the negative and positive peaks of each marker across samples
+    and studies, with utilities for threshold gating and for scoring antibody staining quality
+  recovers: protein markers that batch-specific staining makes unusable across samples, and titration guidance from the
+    staining-quality score
+  gain: against 14 scaling, normalisation and batch-correction methods (CLR, Arcsinh, logCPM, Harmony, fastMNN, CytofRUV,
+    dsb, DecontPro, totalVI, sciPENN) on 13 public CITE-seq datasets, best alignment of positive and negative populations and cell-type
+    separation
+  gain_source: self-reported
+  requires: [protein]
+  caveats: Comparison is the authors' own; peak detection needs a visible negative population, which some markers lack;
+    manual peak adjustment is sometimes needed.
+  url: https://yezhengstat.github.io/ADTnorm/
+  repo: yezhengSTAT/ADTnorm
+  language: R
+  doi: 10.1038/s41467-025-61023-6
+  pmid: '40595741'
+  cite_title: 'ADTnorm: robust integration of single-cell protein measurement across CITE-seq datasets'
+  year: 2025
+  verified: true
+  papers: [pmid:39041028]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#adtnorm
+  tags: [citeseq, protein, normalisation]
+- id: buus-2021
+  name: Buus et al. 2021 antibody titration for CITE-seq
+  kind: design
+  layer: core
+  categories: [ambient-rna, multimodal]
+  side: additive
+  tier: published-unbenchmarked
+  summary: Titrates antibody concentration, staining volume and cell number for a 52-antibody 5' CITE-seq panel and shows
+    that recommended concentrations cause unnecessary background from unbound antibody
+  recovers: protein signal and sequencing budget otherwise spent on background tags
+  gain: adjusted panel gave a 57% higher median positive signal and 43% lower background (median 26.3% to 14.9% of UMIs
+    assigned to background); HLA-DR used 9% of cell-containing UMIs in lung tumour and could be cut at least fourfold
+  gain_source: self-reported
+  requires: [protein]
+  caveats: One panel and two samples (healthy PBMC, immune cells from a lung tumour); optimal titres depend on the antibody lot and the cell numbers stained.
+  doi: 10.7554/eLife.61973
+  pmid: '33861199'
+  cite_title: Improving oligo-conjugated antibody signal in multimodal single-cell analysis
+  year: 2021
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#buus-2021
+  tags: [citeseq, protein, titration, wet-lab]
+# ---------------------------------------------------------------- scATAC and multiome
+- id: atac-qc-metrics
+  name: scATAC per-cell QC metrics (TSS enrichment, fragments, FRiP, nucleosome signal, blacklist fraction)
+  kind: method
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: both
+  tier: standard
+  summary: Filters scATAC and multiome barcodes on unique fragment count, TSS enrichment, fraction of fragments in peaks,
+    nucleosome signal and blacklist fraction, the ATAC equivalents of counts, complexity and mito fraction
+  recovers: cells whose low fragment counts are biology (small or quiescent nuclei) when TSS enrichment is still high
+  gain: none measured as cells retained; the metrics are the basis of ArchR, Signac, SnapATAC2 and Cell Ranger ARC QC
+  gain_source: none
+  requires: [bam]
+  caveats: Thresholds are fixed by convention (ArchR default TSS enrichment >= 4 and >= 1,000 fragments) and vary by
+    protocol, since TSS enrichment and FRiP differ systematically between scATAC methods ([[de-rop-2024]]); FRiP needs a
+    peak set, which genome-bin pipelines do not build ([[chromap-qc]]).
+  url: https://stuartlab.org/signac/articles/pbmc_vignette
+  doi: 10.1038/s41592-021-01282-5
+  pmid: '34725479'
+  cite_title: Single-cell chromatin state analysis with Signac
+  year: 2021
+  verified: true
+  papers: [pmid:33633365, pmid:37537502]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#atac-qc-metrics
+  tags: [atac, multiome, best-practice]
+- id: archr
+  name: ArchR
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal, doublets]
+  side: both
+  tier: standard
+  summary: R suite for scATAC analysis whose arrow-file creation step computes per-cell TSS enrichment and fragment counts,
+    applies QC thresholds, and scores doublets by projecting synthetic doublets, before clustering and integration
+  recovers: none specific; standard QC entry point for scATAC
+  gain: 'analysed over 1.2 million cells in 8 h on a laptop (self-reported); Luo 2024: with SnapATAC2 the most scalable of
+    five feature-engineering methods, but its iterative LSI embedding stayed correlated 0.5-0.75 with library size'
+  gain_source: independent
+  requires: [bam]
+  caveats: Default thresholds (TSS enrichment >= 4, >= 1,000 fragments) are protocol-dependent; its doublet scores are an
+    RNA-free method distinct from AMULET; last code push February 2025. Doublet scoring is simulation-based and heterotypic only;
+    on simulated PBMC multiplets recall was 0.25 and 0.23 against 0.80 and 0.90 for AMULET, though ArchR was higher (0.68 vs
+    0.37) on one low-depth islet sample (AMULET paper, a competitor comparison).
+  url: https://www.archrproject.com
+  repo: GreenleafLab/ArchR
+  language: R
+  doi: 10.1038/s41588-021-00790-6
+  pmid: '33633365'
+  cite_title: ArchR is a scalable software package for integrative single-cell chromatin accessibility analysis
+  year: 2021
+  verified: true
+  benchmarks: [luo-2024-chromatin-benchmark]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#archr
+  tags: [atac, multiome, doublets]
+- id: signac
+  name: Signac
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: both
+  tier: standard
+  summary: Seurat-compatible R toolkit for single-cell chromatin data that computes nucleosome signal, TSS enrichment,
+    fragments in peaks and blacklist ratio for QC, then runs LSI, clustering and integration with RNA
+  recovers: none specific; standard QC entry point for 10x multiome in R
+  gain: 'scaled to over 700,000 cells (self-reported); Luo 2024: its LSI embedding was outperformed on clustering by
+    SnapATAC, SnapATAC2 and aggregation, and correlated 0.5-0.75 with library size after removing the first component'
+  gain_source: independent
+  requires: [bam]
+  caveats: QC thresholds are user-chosen from vignette defaults; depth leaks into LSI components beyond the first, so
+    fragment-count differences between conditions can drive clusters.
+  url: https://stuartlab.org/signac/
+  repo: stuart-lab/signac
+  language: R
+  doi: 10.1038/s41592-021-01282-5
+  pmid: '34725479'
+  cite_title: Single-cell chromatin state analysis with Signac
+  year: 2021
+  verified: true
+  benchmarks: [luo-2024-chromatin-benchmark]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#signac
+  tags: [atac, multiome, seurat]
+- id: snapatac2
+  name: SnapATAC2
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: both
+  tier: benchmarked-sota
+  summary: Python and Rust package for single-cell epigenomics that computes fragment and TSS enrichment QC on genome bins
+    and embeds cells with a matrix-free spectral method that scales linearly with cell number
+  recovers: cell-type structure in complex datasets with less leakage of sequencing depth into the embedding
+  gain: 'Luo 2024 (independent): with SnapATAC preferred for datasets with complex cell-type structure, among the most
+    scalable, and its cosine embedding correlated only ~0.2 with library size versus 0.5-0.75 for Signac and ArchR'
+  gain_source: independent
+  requires: [bam]
+  caveats: Works on genome bins without peak calling, so peak-based QC such as FRiP is unavailable; Chromap's QC preprint
+    reports low-quality cells SnapATAC2 missed ([[chromap-qc]]).
+  url: https://scverse.org/SnapATAC2/
+  repo: scverse/SnapATAC2
+  language: multiple
+  doi: 10.1038/s41592-023-02139-9
+  pmid: '38191932'
+  cite_title: A fast, scalable and versatile tool for analysis of single-cell omics data
+  year: 2024
+  verified: true
+  papers: [doi:10.1101/2023.09.11.557221]
+  benchmarks: [luo-2024-chromatin-benchmark]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#snapatac2
+  tags: [atac, multiome, scverse]
+- id: scatac-pro
+  name: scATAC-pro
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal, cell-calling]
+  side: both
+  tier: published-unbenchmarked
+  summary: Workbench for scATAC-seq data from any protocol that computes QC metrics at each processing step, calls cells
+    with a choice of methods and writes QC and analysis reports
+  recovers: a protocol-agnostic QC report for non-10x scATAC data
+  gain: none quantified
+  gain_source: none
+  requires: [fastq]
+  caveats: Last code push September 2024; cell-calling options have not been independently compared.
+  url: https://github.com/tanlabcode/scATAC-pro
+  repo: tanlabcode/scATAC-pro
+  doi: 10.1186/s13059-020-02008-0
+  pmid: '32312293'
+  cite_title: 'scATAC-pro: a comprehensive workbench for single-cell chromatin accessibility sequencing data'
+  year: 2020
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#scatac-pro
+  tags: [atac, pipeline, report]
+- id: chromap-qc
+  name: Chromap peak-free scATAC QC
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Extension of the Chromap aligner that reports peak-based QC metrics such as fraction of reads in peaks during
+    alignment, without a separate peak-calling step
+  recovers: none; restores FRiP filtering to bin-based pipelines
+  gain: captured additional low-quality cells missed by SnapATAC2's QC and improved downstream results without extra
+    compute (preprint, self-reported)
+  gain_source: self-reported
+  requires: [fastq]
+  caveats: Preprint; no number of extra cells removed in the abstract.
+  url: https://github.com/haowenz/chromap
+  repo: haowenz/chromap
+  language: C++
+  doi: 10.1101/2025.07.15.664951
+  pmid: '40791457'
+  cite_title: Quality control of single-cell ATAC-seq data without peak calling using Chromap
+  year: 2025
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#chromap-qc
+  tags: [atac, preprint, alignment]
+# ---------------------------------------------------------------- spatial
+- id: spotclean
+  name: SpotClean
+  kind: tool
+  layer: core
+  categories: [ambient-rna, multimodal]
+  side: both
+  tier: published-unbenchmarked
+  summary: Probabilistic model of spot swapping in sequencing-based spatial transcriptomics (Visium) that uses off-tissue
+    spots to estimate how UMIs bleed between spots and returns decontaminated counts
+  recovers: spot-specific expression, sharper marker genes and tissue-region boundaries
+  gain: in a tumour section over 13% of spots were labelled malignant in raw data but not after SpotClean, matching the H&E
+    better (self-reported)
+  gain_source: self-reported
+  requires: [raw-matrix]
+  caveats: Needs at least 25% of spots off tissue to estimate contamination; built for Visium-style arrays.
+  url: https://bioconductor.org/packages/SpotClean
+  repo: zijianni/SpotClean
+  language: R
+  doi: 10.1038/s41467-022-30587-y
+  pmid: '35624112'
+  cite_title: SpotClean adjusts for spot swapping in spatial transcriptomics data
+  year: 2022
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#spotclean
+  tags: [spatial, visium, ambient]
+- id: spotsweeper
+  name: SpotSweeper
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: both
+  tier: published-unbenchmarked
+  summary: Spatially aware QC for spatial transcriptomics that compares each spot's metrics with its local neighbourhood to
+    find local outliers and regional artefacts instead of using dataset-wide thresholds
+  recovers: spots in biologically low-count regions (for example white matter) that global thresholds remove
+  gain: identified a consistent set of systematically low-quality Visium barcoded spots across public datasets and two
+    distinct regional artefact types (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Neighbourhood size is a tuning choice; a Python port (Spotsweeper-py, 2025 preprint) exists.
+  url: https://bioconductor.org/packages/SpotSweeper
+  repo: MicTott/SpotSweeper
+  language: R
+  doi: 10.1038/s41592-025-02713-3
+  pmid: '40481362'
+  cite_title: 'SpotSweeper: spatially aware quality control for spatial transcriptomics'
+  year: 2025
+  verified: true
+  papers: [pmid:38895212, pmid:41427384]
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#spotsweeper
+  tags: [spatial, visium, local-outliers]
+- id: spatialartifacts
+  name: SpatialArtifacts
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Finds spatially contiguous tissue artefacts (dry patches, tissue lifting, uneven reagent) in Visium and VisiumHD
+    by combining MAD outliers with morphological operations and classifying them as edge or interior, large or small
+  recovers: none; removes or flags artefact regions for review while keeping true low-count domains
+  gain: demonstrated on human hippocampus, dorsolateral prefrontal cortex and colorectal cancer; no counts in the abstract
+  gain_source: none
+  requires: [filtered-matrix]
+  caveats: Preprint (2026).
+  url: https://bioconductor.org/packages/SpatialArtifacts
+  repo: CambridgeCat13/SpatialArtifacts
+  language: multiple
+  doi: 10.64898/2026.05.15.725260
+  pmid: '42239246'
+  cite_title: 'SpatialArtifacts: a computational framework for tissue artifact detection in spatial transcriptomics data'
+  year: 2026
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#spatialartifacts
+  tags: [spatial, visium, preprint]
+- id: cylinter
+  name: CyLinter
+  kind: tool
+  layer: core
+  categories: [qc-metrics-thresholds, multimodal]
+  side: subtractive
+  tier: published-unbenchmarked
+  summary: Interactive QC tool for high-plex tissue imaging (CyCIF, CODEX and similar) that finds and removes cells affected
+    by folds, debris, antibody aggregates, optical aberrations and segmentation errors
+  recovers: none; removes artefact-derived cells that otherwise form spurious clusters
+  gain: before cleaning, clustering of 25 TOPACIO specimens left ~29% of cells unclustered and many clusters traced to
+    artefacts (self-reported)
+  gain_source: self-reported
+  requires: [filtered-matrix]
+  caveats: Protein imaging rather than transcriptomics; relies on visual review at several steps.
+  url: https://labsyspharm.github.io/cylinter/
+  repo: labsyspharm/cylinter
+  language: Python
+  doi: 10.1038/s41592-024-02328-0
+  pmid: '39478175'
+  cite_title: Quality control for single-cell analysis of high-plex tissue profiles using CyLinter
+  year: 2024
+  verified: true
+  track: QC-sweep-C
+  review: 13-metrics-guides-multimodal#cylinter
+  tags: [spatial, imaging, protein]

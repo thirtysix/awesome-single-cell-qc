@@ -1,0 +1,367 @@
+# Track concepts-B: adjacent concept map for downstream steps (DE and composition, perturbation
+# modelling, trajectories and RNA velocity, multimodal). Lighter depth; the qc_links are the point.
+# Hand-written layer; see docs/review/22-concepts-downstream.md.
+# Existing anchors (muscat, nebula, dreamlet, scvi-de, sccoda, propeller, sccomp, mrvi, cpa, mixscape,
+# ahlmann-eltze-2025, squair-2021, junttila-2022, ...) live in T3/T5 and are linked from the chapter.
+records:
+
+  # ------------------------------------------------------------------ concept nodes
+
+  - id: concept-de-pseudobulk
+    name: Differential expression and differential abundance between conditions
+    kind: concept
+    layer: adjacent
+    categories: [de-pseudobulk]
+    side: neutral
+    tier: standard
+    summary: "Testing which genes change expression (differential state) or which cell populations change in abundance between conditions, with biological replicates as the unit of inference, usually by pseudobulk aggregation, mixed models or neighbourhood-level count models"
+    caveats: "Cell-level tests that ignore the replicate structure call hundreds of false DE genes (Squair 2021); every QC step changes which cells are summed into each replicate, so QC losses that differ by condition become DE or abundance results"
+    doi: 10.3390/e24070995
+    pmid: "35885218"
+    cite_title: "Differential Expression Analysis of Single-Cell RNA-Seq Data: Current Statistical Approaches and Outstanding Challenges."
+    year: 2022
+    verified: true
+    papers: ["pmid:34584091", "pmid:35880426", "pmid:37002403", "pmid:34594043"]
+    qc_links:
+      - {category: ambient-rna, effect: "Ambient RNA levels are highly sample-specific, and without correction DE between patients and controls called ambient transcripts as cell-type-specific disease genes (FastCAR, PMID 38030970; CellBender, PMID 37550580)"}
+      - {category: doublets, effect: "In simulations with doublets, removal by most detectors improved recovery of the true DE genes (Xi and Li 2021, PMID 33338399)"}
+      - {category: qc-metrics-thresholds, effect: "A fixed mitochondrial cut removes viable malignant cells, whose high-mito share was twice the microenvironment's in 10-50% of tumour samples and tracked drug resistance, so condition-linked cells drop out before DE or abundance testing (PMID 40205439)"}
+      - {category: low-cell-stats, effect: "Cells lost to QC lower cells per replicate; pseudobulk methods, which need replicates rather than cells, were all six top performers against matched bulk while cell-level tests called hundreds of false DE genes (Squair 2021, PMID 34584091)"}
+    track: concepts-B
+    review: 22-concepts-downstream#concept-de-pseudobulk
+    tags: [concept, pseudobulk, differential-abundance]
+
+  - id: concept-perturbation-models
+    name: Perturbation response estimation and prediction
+    kind: concept
+    layer: adjacent
+    categories: [perturbation-models]
+    side: neutral
+    tier: standard
+    summary: "Estimating the transcriptional effect of a genetic or chemical perturbation against controls, and predicting effects of unseen perturbations, doses or combinations, from pooled CRISPR screens and multiplexed drug screens"
+    caveats: "Deep prediction models have not beaten additive or linear baselines on held-out genetic perturbations (Ahlmann-Eltze 2025); estimates are only as good as the cells left after guide assignment, demultiplexing and QC, which perturbations themselves change"
+    doi: 10.1016/j.cels.2021.05.016
+    pmid: "34139164"
+    cite_title: "Machine learning for perturbational single-cell omics."
+    year: 2021
+    verified: true
+    papers: ["pmid:41476114", "pmid:40759747", "pmid:35688146", "pmid:40259084"]
+    qc_links:
+      - {category: ambient-rna, effect: "Ambient gRNAs produce an excess of false-positive gRNA assignments in Perturb-seq, and the choice of ambient gRNA filter changed differential expression results (CLEANSER, PMID 39914388)"}
+      - {category: damaged-cells, effect: "MIX-Seq found that navitoclax and AZD5591 gave strong selective viability effects but no robust transcriptional signature in captured cells, so the cells that die are missing from the response estimate (PMID 32855387)"}
+      - {category: qc-metrics-thresholds, effect: "High mitochondrial fraction associated with higher IC50 across cancer cell lines, so a fixed mito cut can preferentially remove drug-resistant cells from treated conditions (PMID 40205439)"}
+      - {category: cell-cycle-and-stress, effect: "Mixscape's local perturbation signatures, computed against nearest control cells, substantially reduced replicate, cell-cycle and stress variation, and 115 of 278 IFNGR2-guide cells were classed as escaping perturbation (PMID 33649593)"}
+      - {category: demux-hashing, effect: "In sci-Plex the number of cells recovered per hashed condition was a viability readout concordant with gold-standard measurements, so hash assignment and QC losses per dose are signal rather than noise (PMID 31806696)"}
+    track: concepts-B
+    review: 22-concepts-downstream#concept-perturbation-models
+    tags: [concept, perturb-seq, drug-screen]
+
+  - id: concept-trajectories
+    name: Trajectory inference, pseudotime and RNA velocity
+    kind: concept
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: standard
+    summary: "Ordering cells along continuous processes such as differentiation or response (pseudotime, lineage trees) and inferring direction from spliced and unspliced RNA (RNA velocity) or fate probabilities"
+    caveats: "Trajectory methods return a path on any input, so artefactual intermediates (doublets, damaged cells) and nuisance axes (cell cycle, stress) are fitted as biology unless removed or modelled first"
+    doi: 10.1242/dev.170506
+    pmid: "31249007"
+    cite_title: "Concepts and limitations for learning developmental trajectories from single cell genomics."
+    year: 2019
+    verified: true
+    papers: ["pmid:30936559", "pmid:34435732", "pmid:30089906", "pmid:33428615"]
+    qc_links:
+      - {category: doublets, effect: "Heterotypic doublets created spurious branches in Slingshot trajectories on simulated data, which every detector except doubletCells removed (Xi and Li 2021, PMID 33338399)"}
+      - {category: cell-cycle-and-stress, effect: "Accounting for cell-cycle variation revealed otherwise undetectable subpopulations corresponding to stages of naive T to Th2 differentiation (scLVM, PMID 25599176)"}
+      - {category: alignment-quantification, effect: "The quantification pipeline sets the spliced and unspliced counts: five tools (13 approaches) gave substantially different abundances that changed velocities and interpretation (PMID 33428615), and only three of 22 splicing-based velocity methods were robust across alevin, dropEst, kallisto|bustools, STARsolo and velocyto outputs (PMID 42509564)"}
+    track: concepts-B
+    review: 22-concepts-downstream#concept-trajectories
+    tags: [concept, pseudotime, rna-velocity]
+
+  - id: concept-multimodal
+    name: Multimodal single-cell data (CITE-seq, multiome)
+    kind: concept
+    layer: adjacent
+    categories: [multimodal]
+    side: neutral
+    tier: standard
+    summary: "Measuring and jointly analysing more than one molecular layer per cell, such as RNA with surface protein (CITE-seq) or with chromatin accessibility (multiome), each with its own background, depth and QC metrics"
+    caveats: "Each modality has its own noise model: antibody counts carry ambient and non-specific background, ATAC is sparse with a narrow dynamic range, so RNA-centred QC and doublet calling do not transfer directly"
+    doi: 10.1038/s12276-020-0420-2
+    pmid: "32929225"
+    cite_title: "Single-cell multiomics: technologies and data analysis methods."
+    year: 2020
+    verified: true
+    papers: ["pmid:37002403", "pmid:39322753", "pmid:34062119"]
+    qc_links:
+      - {category: ambient-rna, effect: "Protein-specific ADT noise comes from unbound antibodies encapsulated in droplets and can be estimated from protein levels in empty droplets (dsb, PMID 35440536)"}
+      - {category: cell-calling, effect: "dsb's background correction needs the empty droplets, so the raw (unfiltered) barcode matrix must be kept past cell calling (PMID 35440536)"}
+      - {category: doublets, effect: "snATAC is too sparse for expression-style doublet simulation; AMULET counts regions with more than two reads and detects multiplets best from about 25K median valid reads per nucleus (PMID 34465366)"}
+      - {category: demux-hashing, effect: "Barcoded antibodies of the same kind as CITE-seq ADTs multiplex samples and flag cross-sample doublets, so hashing and protein panels share one library and one background problem (Cell Hashing, PMID 30567574)"}
+    track: concepts-B
+    review: 22-concepts-downstream#concept-multimodal
+    tags: [concept, cite-seq, multiome]
+
+  # ------------------------------------------------------------------ differential abundance
+
+  - id: milo
+    name: Milo (miloR, pertpy)
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, low-cell-stats]
+    side: neutral
+    tier: benchmarked-sota
+    summary: "Differential abundance testing on partially overlapping k-nearest-neighbour neighbourhoods with a negative binomial GLM across replicates and a spatial FDR correction, so abundance shifts are found without predefined clusters"
+    gain: "Yi 2024 (6 DA methods, synthetic and real data): Milo and Meld were robust and ranked top 2, and Milo performed best across a range of batch-effect magnitudes with the fewest hyperparameters to tune"
+    gain_source: independent
+    requires: [replicates, filtered-matrix]
+    caveats: "Neighbourhoods depend on the kNN graph and its integration, so batch correction choices feed into results; needs replicates per condition; miloDE (PMID 39026254) extends the idea to cluster-free DE"
+    url: https://bioconductor.org/packages/miloR
+    repo: MarioniLab/miloR
+    language: multiple
+    doi: 10.1038/s41587-021-01033-z
+    pmid: "34594043"
+    cite_title: "Differential abundance testing on single-cell data using k-nearest neighbor graphs."
+    year: 2022
+    verified: true
+    papers: ["pmid:39026254"]
+    benchmarks: [yi-2024-da-benchmark]
+    qc_links:
+      - {category: batch-and-plate-effects, effect: "Milo kept FDR control across batch effects in its own tests and was most robust to batch-effect magnitude in Yi 2024 (PMIDs 34594043, 38172966)"}
+    track: concepts-B
+    review: 22-concepts-downstream#milo
+    tags: [differential-abundance, knn-graph]
+
+  # ------------------------------------------------------------------ perturbation
+
+  - id: pertpy
+    name: pertpy
+    kind: tool
+    layer: adjacent
+    categories: [perturbation-models, de-pseudobulk]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "scverse Python framework for single-cell perturbation experiments that bundles harmonized perturbation datasets, metadata annotation, perturbation distances and implementations of established methods (Mixscape, Milo, scCODA, Augur, scGen and others)"
+    gain_source: none
+    requires: [filtered-matrix, multiple-conditions]
+    caveats: "A framework of re-implementations; each method keeps its own assumptions and benchmark record"
+    url: https://pertpy.readthedocs.io
+    repo: scverse/pertpy
+    language: Python
+    doi: 10.1038/s41592-025-02909-7
+    pmid: "41476114"
+    cite_title: "Pertpy: an end-to-end framework for perturbation analysis."
+    year: 2026
+    verified: true
+    track: concepts-B
+    review: 22-concepts-downstream#pertpy
+    tags: [scverse, perturb-seq, drug-screen]
+
+  # ------------------------------------------------------------------ trajectories and velocity
+
+  - id: saelens-2019
+    name: "Saelens et al. 2019: trajectory inference benchmark (dynverse)"
+    kind: evidence
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: standard
+    summary: "Benchmark of 45 trajectory inference methods on 110 real and 229 synthetic datasets for cellular ordering, topology, scalability and usability, with guidelines for choosing a method by dataset size and expected topology"
+    gain: "No method best for every topology; the method choice should depend mostly on dataset dimensions and trajectory topology. In the authors' results data (February 2019), Slingshot had the highest overall accuracy (0.706), then PAGA Tree (0.695) and SCORPIUS (0.672); in the 29-method preprint, Slingshot, TSCAN and Monocle DDRTree clearly outperformed the rest"
+    gain_source: independent
+    caveats: "Accuracy is scored against reference trajectories; QC choices were not varied. The published paper is paywalled: rankings are from the authors' results file (github dynverse/dynbenchmark_results, 08-summary/results.rds; the February and September 2019 versions agree on the top three by accuracy, but the September update puts SCORPIUS first on the combined score) and the preprint"
+    url: https://benchmark.dynverse.org
+    repo: dynverse/dynbenchmark
+    language: R
+    doi: 10.1038/s41587-019-0071-9
+    pmid: "30936559"
+    cite_title: "A comparison of single-cell trajectory inference methods."
+    year: 2019
+    verified: true
+    track: concepts-B
+    review: 22-concepts-downstream#saelens-2019
+    tags: [benchmark, pseudotime]
+
+  - id: slingshot
+    name: Slingshot
+    kind: tool
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: benchmarked-sota
+    summary: "Infers branching lineages by fitting a minimum spanning tree over clusters and then simultaneous principal curves, returning one pseudotime per lineage"
+    gain: "Saelens 2019: highest overall accuracy score of all evaluated methods (0.706, then PAGA Tree 0.695 and SCORPIUS 0.672) in the authors' results data from February 2019, two months before publication, where it was also first on the combined accuracy, scalability, stability and usability score; in the 29-method preprint it was the only method good across most trajectory types"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "Works on a reduced dimension and a clustering supplied by the user, so cluster-level artefacts (doublet clusters, stress clusters) become lineage nodes; doublets created spurious branches in Xi and Li 2021. The Saelens rank is read from the authors' results file (github dynverse/dynbenchmark_results, 08-summary/results.rds) because the published text is paywalled"
+    url: https://bioconductor.org/packages/slingshot
+    repo: kstreet13/slingshot
+    language: R
+    doi: 10.1186/s12864-018-4772-0
+    pmid: "29914354"
+    cite_title: "Slingshot: cell lineage and pseudotime inference for single-cell transcriptomics."
+    year: 2018
+    verified: true
+    benchmarks: [saelens-2019-ti-benchmark]
+    qc_links:
+      - {category: doublets, effect: "Doublets produced spurious Slingshot branches on simulated data, and doublet removal most improved temporally DE genes when Slingshot was used (Xi and Li 2021, PMID 33338399)"}
+    track: concepts-B
+    review: 22-concepts-downstream#slingshot
+    tags: [pseudotime, lineage]
+
+  - id: velocyto
+    name: velocyto (RNA velocity)
+    kind: tool
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: standard
+    summary: "Introduced RNA velocity: counts spliced and unspliced reads per gene and fits a steady-state model of splicing kinetics to predict each cell's future state"
+    gain: "Wu 2026 recommended Velocyto among five methods balancing core performance and scalability; Luo 2026 found its agreement declined significantly in downsamples"
+    gain_source: independent
+    requires: [bam, spliced-unspliced]
+    caveats: "The steady-state assumption fails for transient states (motivation for scVelo's dynamical model); results depend on how reads are assigned to spliced, unspliced and ambiguous (Soneson 2021)"
+    url: http://velocyto.org
+    repo: velocyto-team/velocyto.py
+    language: multiple
+    doi: 10.1038/s41586-018-0414-6
+    pmid: "30089906"
+    cite_title: "RNA velocity of single cells."
+    year: 2018
+    verified: true
+    benchmarks: [wu-2026-velocity-benchmark, luo-2026-velocity-benchmark]
+    track: concepts-B
+    review: 22-concepts-downstream#velocyto
+    tags: [rna-velocity]
+
+  - id: scvelo
+    name: scVelo
+    kind: tool
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: standard
+    summary: "Python RNA velocity toolkit with steady-state, stochastic and likelihood-based dynamical models of splicing kinetics, plus latent time and velocity graphs; the scverse default for velocity"
+    gain: "Wu 2026: scVelo (stochastic) among five methods recommended for core performance and scalability, while scVelo (dynamical) ranked 14th, below veloVI (8th); Luo 2026: scVelo-sto among methods recommended for million-cell atlases and among those with highest agreement"
+    gain_source: independent
+    requires: [spliced-unspliced]
+    caveats: "Velocity estimates change with the spliced/unspliced quantification pipeline (Soneson 2021; Wu 2026 found only three of 22 methods robust to it); Bergen 2021 reviews its limitations and pitfalls"
+    url: https://scvelo.org
+    repo: theislab/scvelo
+    language: Python
+    doi: 10.1038/s41587-020-0591-3
+    pmid: "32747759"
+    cite_title: "Generalizing RNA velocity to transient cell states through dynamical modeling."
+    year: 2020
+    verified: true
+    papers: ["pmid:34435732"]
+    benchmarks: [wu-2026-velocity-benchmark, luo-2026-velocity-benchmark]
+    qc_links:
+      - {category: alignment-quantification, effect: "Spliced and unspliced abundances from five quantification tools differed substantially and changed the velocities scVelo estimated (PMID 33428615)"}
+    track: concepts-B
+    review: 22-concepts-downstream#scvelo
+    tags: [rna-velocity, scverse]
+
+  - id: cellrank
+    name: CellRank
+    kind: tool
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: benchmarked
+    summary: "Combines a cell-cell similarity graph with directional information (RNA velocity, pseudotime or other kernels) in a Markov chain to find initial, intermediate and terminal states and per-cell fate probabilities"
+    gain: "Self-reported: recovered reprogramming outcomes on lineage-traced data and predicted a dedifferentiation trajectory in lung regeneration that was confirmed experimentally; Luo 2026 evaluated it among 15 velocity methods with mixed agreement"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "Inherits errors from the velocity or pseudotime kernel it is given, so quantification and QC choices upstream of velocity carry through to fate probabilities"
+    url: https://cellrank.org
+    repo: theislab/cellrank
+    language: Python
+    doi: 10.1038/s41592-021-01346-6
+    pmid: "35027767"
+    cite_title: "CellRank for directed single-cell fate mapping."
+    year: 2022
+    verified: true
+    benchmarks: [luo-2026-velocity-benchmark]
+    track: concepts-B
+    review: 22-concepts-downstream#cellrank
+    tags: [fate-mapping, rna-velocity, scverse]
+
+  - id: soneson-2021-velocity-preprocessing
+    name: "Soneson et al. 2021: preprocessing choices change RNA velocity"
+    kind: evidence
+    layer: adjacent
+    categories: [trajectories]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Compared five quantification tools (13 approaches) for spliced and unspliced abundances in five droplet scRNA-seq datasets and showed that the differences propagate to estimated velocities and their biological interpretation"
+    gain: "Substantial between-tool differences in unspliced and spliced counts, concentrated in identifiable gene types, with large effects on velocity; both the feature definitions and the quantification algorithm matter"
+    gain_source: independent
+    requires: [fastq, spliced-unspliced]
+    caveats: "Shows sensitivity, not which pipeline is right; Wu 2026 later confirmed that most velocity methods are not robust to the quantifier"
+    doi: 10.1371/journal.pcbi.1008585
+    pmid: "33428615"
+    cite_title: "Preprocessing choices affect RNA velocity results for droplet scRNA-seq data."
+    year: 2021
+    verified: true
+    papers: ["pmid:42509564"]
+    qc_links:
+      - {category: alignment-quantification, effect: "The quantification step (Cell Ranger/velocyto, STARsolo, alevin, kallisto|bustools, dropEst) decides spliced versus unspliced counts, and changing it changed velocity results (PMID 33428615)"}
+    track: concepts-B
+    review: 22-concepts-downstream#soneson-2021-velocity-preprocessing
+    tags: [rna-velocity, quantification]
+
+  # ------------------------------------------------------------------ multimodal
+
+  - id: totalvi
+    name: totalVI (scvi-tools)
+    kind: tool
+    layer: adjacent
+    categories: [multimodal, integration]
+    side: both
+    tier: benchmarked-sota
+    summary: "Deep generative model of CITE-seq RNA and protein counts that models protein background and batch effects explicitly, for joint embedding, integration of panels, imputation and differential expression"
+    gain: "Hu 2024 (14 prediction and 18 integration algorithms, 47 datasets): totalVI with scArches best overall for predicting protein abundance, and totalVI with UINMF best in horizontal and mosaic integration (abstract)"
+    gain_source: independent
+    requires: [protein, filtered-matrix]
+    caveats: "Background is modelled per cell rather than measured from empty droplets as dsb does; GPU preferred for large data. Part of the scvi-tools library [[scvi-tools]]; Hu 2024 ran totalVI 0.17.4 for prediction and 0.19.0 for integration (authors' repository QuKunLab/MultiomeBenchmarking)"
+    url: https://scvi-tools.org
+    repo: scverse/scvi-tools
+    language: Python
+    doi: 10.1038/s41592-020-01050-x
+    pmid: "33589839"
+    cite_title: "Joint probabilistic modeling of single-cell multi-omic data with totalVI."
+    year: 2021
+    verified: true
+    benchmarks: [hu-2024-multiomics-benchmark]
+    qc_links:
+      - {category: ambient-rna, effect: "totalVI separates each protein's foreground from background, the ambient and non-specific signal that dsb estimates from empty droplets (PMIDs 33589839, 35440536)"}
+    track: concepts-B
+    review: 22-concepts-downstream#totalvi
+    tags: [cite-seq, scverse]
+
+  - id: seurat-wnn
+    name: Seurat weighted nearest neighbours (WNN)
+    kind: method
+    layer: adjacent
+    categories: [multimodal, clustering-annotation]
+    side: neutral
+    tier: benchmarked-sota
+    summary: "Learns per-cell weights for each modality from how well it predicts its neighbours, and builds one weighted nearest-neighbour graph for joint clustering, UMAP and reference mapping of CITE-seq or multiome data"
+    gain: "Hu 2024: Seurat, MOJITOO and scAI led vertical (same-cell) integration across 47 datasets (abstract); the Seurat run there was WNN (FindMultiModalNeighbors in Seurat 4.3.0.1 for RNA+ADT and RNA+ATAC, per the authors' code); Hao 2021 built a 211,000-cell, 228-antibody PBMC reference with it (self-reported)"
+    gain_source: independent
+    requires: [protein, filtered-matrix]
+    caveats: "Modality weights reflect neighbourhood consistency, so a noisy, unnormalised ADT panel or ATAC with few fragments simply gets down-weighted rather than flagged"
+    url: https://satijalab.org/seurat/articles/weighted_nearest_neighbor_analysis
+    repo: satijalab/seurat
+    language: R
+    doi: 10.1016/j.cell.2021.04.048
+    pmid: "34062119"
+    cite_title: "Integrated analysis of multimodal single-cell data."
+    year: 2021
+    verified: true
+    benchmarks: [hu-2024-multiomics-benchmark]
+    track: concepts-B
+    review: 22-concepts-downstream#seurat-wnn
+    tags: [cite-seq, multiome, seurat]

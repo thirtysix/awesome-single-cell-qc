@@ -1,0 +1,456 @@
+# T5: turning discarded barcodes into signal (doublets, lost or damaged cells, empty droplets).
+# Hand-written records; identifiers verified against PubMed esummary and Crossref on 2026-10-21.
+# Hypothesis records without a source carry no doi/pmid.
+
+records:
+
+# --- Doublets and multiplets as interactions ---------------------------------------------------------
+
+  - id: pic-seq
+    name: PIC-seq
+    kind: method
+    layer: core
+    categories: [discarded-data, doublets]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Sequences physically interacting cells (PICs) sorted as cell pairs and models each PIC transcriptome as a mixture of two singlet profiles, giving the mixing factor and the genes expressed above or below the mixture expectation"
+    recovers: "interaction-specific transcription from cell pairs that QC would discard as doublets"
+    gain: "re-use on human kidney allograft CITE-seq (31,203 libraries): 3 of 6 doublet clusters called physically interacting; two analysed clusters at 4.7x and 9.5x the expected artefactual-doublet frequency, mixing-factor regression R2 0.84 and 0.85"
+    gain_source: independent
+    requires: [filtered-matrix, reference]
+    caveats: "designed for FACS-sorted pairs; on unsorted droplet data it needs an expected random-doublet frequency, which common heuristics underestimate; assumes two-cell PICs; singlet references must come from the same sample"
+    url: https://github.com/aygoldberg/PIC-seq
+    repo: aygoldberg/PIC-seq
+    language: R
+    doi: "10.1038/s41587-020-0442-2"
+    pmid: "32152598"
+    cite_title: "Dissecting cellular crosstalk by sequencing physically interacting cells"
+    year: 2020
+    verified: true
+    papers: ["pmid:37638864"]
+    track: T5
+    review: 05-discarded-data#pic-seq
+    tags: [doublets-as-signal, cell-interactions, sorting, mixture-model]
+
+  - id: neighbor-seq
+    name: Neighbor-seq
+    kind: tool
+    layer: core
+    categories: [discarded-data, doublets]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Classifies every barcode into singlet or multiplet types with a random forest trained on artificial multiplets, then tests each cell-type pair for enrichment against re-simulated multiplets to build a physical interaction network from routine scRNA-seq"
+    recovers: "cell-cell contact networks and neighbour-dependent expression from undissociated multiplets"
+    gain: "FACS-sorted DC-T doublets: sensitivity 52.1% (in vitro) and 29.2% (in vivo) at 98.9-99.2% precision, measured by the ULMnet authors"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "the null re-draws observed cells and does not model loading-dependent random doublet rates; cannot separate homotypic interactions from random homotypic doublets; lost to ULMnet in the only external comparison; default calls need >10 counts and P<0.05 per pair"
+    url: https://github.com/sjdlabgroup/Neighborseq
+    repo: sjdlabgroup/Neighborseq
+    language: R
+    doi: "10.1093/nar/gkac333"
+    pmid: "35536255"
+    cite_title: "Reconstructing physical cell interaction networks from single-cell data using Neighbor-seq"
+    year: 2022
+    verified: true
+    papers: ["pmid:41583424"]
+    track: T5
+    review: 05-discarded-data#neighbor-seq
+    tags: [doublets-as-signal, cell-interactions, random-forest, ligand-receptor]
+
+  - id: cicada
+    name: CIcADA
+    kind: tool
+    layer: core
+    categories: [discarded-data, doublets]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Calls heterotypic doublets as cells scoring above 0.75 for two cell types, clusters them with synthetic doublets of the same type pair and keeps only clusters made entirely of observed doublets as biological, then tests them for differential expression against the synthetic pairs"
+    recovers: "transcriptional programmes specific to juxtacrine contacts, from doublets"
+    gain: "FACS-sorted DC-T doublets: sensitivity 21.7% (in vitro) and 15.1% (in vivo), measured by the ULMnet authors"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "the synthetic-doublet contrast assumes random doublets equal the sum of two singlets; ambient RNA or shared state can push singlets over the two-score threshold; higher-order multiplets ignored (<3% of cells had >2 types above 0.75)"
+    url: https://github.com/schiebout/CAMML
+    repo: schiebout/CAMML
+    language: R
+    doi: "10.1093/bioadv/vbad120"
+    pmid: "37745004"
+    cite_title: "Cell type-specific interaction analysis using doublets in scRNA-seq"
+    year: 2023
+    verified: true
+    papers: ["pmid:36824707", "pmid:41583424"]
+    track: T5
+    review: 05-discarded-data#cicada
+    tags: [doublets-as-signal, cell-interactions, synthetic-doublets, tumour-immune]
+
+  - id: ulmnet
+    name: ULMnet
+    kind: method
+    layer: core
+    categories: [discarded-data, doublets]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Scores each barcode against cell-type marker signatures with univariate linear models to identify multiplets, predict their composition and build physical cell-cell interaction networks"
+    recovers: "multiplet composition and contact networks from routine and partially dissociated scRNA-seq"
+    gain: "FACS-sorted DC-T doublets: sensitivity 56% in vitro and 39% in vivo at 99.7-99.9% precision, against 52.1%/29.2% for Neighbor-seq and 21.7%/15.1% for CIcADA"
+    gain_source: self-reported
+    requires: [filtered-matrix, reference]
+    caveats: "comparison run by the method's own authors on two sorted-doublet datasets; sensitivity drops in vivo; no packaged repository named in the paper (built on decoupleR run_ulm)"
+    url: https://doi.org/10.3389/fimmu.2025.1722504
+    language: R
+    doi: "10.3389/fimmu.2025.1722504"
+    pmid: "41583424"
+    cite_title: "ULMnet: inferring physical cell-cell communication networks from scRNAseq data using univariate linear models"
+    year: 2025
+    verified: true
+    track: T5
+    review: 05-discarded-data#ulmnet
+    tags: [doublets-as-signal, cell-interactions, signature-scoring]
+
+  - id: partial-dissociation-seq
+    name: Partial-dissociation sequencing (ProximID, paired-cell sequencing, ClumpSeq)
+    kind: design
+    layer: core
+    categories: [discarded-data, doublets, screen-design]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Designs that deliberately sequence attached cell pairs or small clumps and use one partner's identity or zonation to infer the other's neighbourhood"
+    recovers: "spatial context and preferential interactions that full dissociation destroys"
+    requires: [filtered-matrix, reference]
+    caveats: "low throughput and tissue-specific protocols; clumps must be distinguished from random co-encapsulation; not designed for pooled multiplexed screens"
+    url: https://doi.org/10.1038/s41592-018-0009-z
+    doi: "10.1038/s41592-018-0009-z"
+    pmid: "29786092"
+    cite_title: "Mapping the physical network of cellular interactions"
+    year: 2018
+    verified: true
+    papers: ["pmid:30222169", "pmid:34031373", "pmid:39695909"]
+    track: T5
+    review: 05-discarded-data#partial-dissociation-seq
+    tags: [doublets-as-signal, cell-interactions, spatial, design]
+
+  - id: t-cell-monocyte-complexes
+    name: Circulating T cell-monocyte complexes
+    kind: evidence
+    layer: core
+    categories: [discarded-data, doublets]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Shows that a sizeable share of T cell-monocyte doublets in human blood are biological complexes with polarised LFA1/ICAM1, whose frequency and phenotype change with infection and immunisation"
+    recovers: "evidence that some events removed as doublets are real, condition-dependent biology"
+    requires: [protein]
+    caveats: "shown by flow and imaging cytometry, not by scRNA-seq doublet calling; complexes also hide in the live-singlet gate and can be misread as novel mixed-lineage cell types (Burel 2020); most dual-lineage events are still technical"
+    url: https://doi.org/10.7554/eLife.46045
+    doi: "10.7554/eLife.46045"
+    pmid: "31237234"
+    cite_title: "Circulating T cell-monocyte complexes are markers of immune perturbations"
+    year: 2019
+    verified: true
+    papers: ["pmid:32400942", "pmid:40073149", "pmid:42601345"]
+    track: T5
+    review: 05-discarded-data#t-cell-monocyte-complexes
+    tags: [doublets-as-signal, cell-interactions, blood, flow-cytometry]
+
+  - id: doubletdecon
+    name: DoubletDecon
+    kind: tool
+    layer: core
+    categories: [doublets, discarded-data]
+    side: both
+    tier: benchmarked
+    summary: "Detects heterotypic doublets by deconvolution against cluster profiles, then returns putative doublet clusters with unique gene expression to the singlets as transitional or mixed-lineage states"
+    recovers: "transitional and progenitor states that synthetic-doublet detectors flag as doublets"
+    gain: "mouse bone marrow with validated transitional states: specificity 80.7% before and 95.0% after the rescue step"
+    gain_source: self-reported
+    requires: [filtered-matrix]
+    caveats: "independent benchmark (Xi & Li 2021): no doublet score, did not beat library-size or gene-count baselines at matched doublet numbers, failed on 4 datasets and tended to over-call doublets; the rescue step itself was not benchmarked"
+    url: https://github.com/EDePasquale/DoubletDecon
+    repo: EDePasquale/DoubletDecon
+    language: R
+    doi: "10.1016/j.celrep.2019.09.082"
+    pmid: "31693907"
+    cite_title: "DoubletDecon: Deconvoluting Doublets from Single-Cell RNA-Sequencing Data"
+    year: 2019
+    verified: true
+    papers: ["pmid:33338399"]
+    benchmarks: [xi-li-2021-doublet-benchmark, neavin-2024-demuxafy-benchmark]
+    track: T5
+    review: 05-discarded-data#doubletdecon
+    tags: [doublet-rescue, transitional-states, deconvolution]
+
+  - id: rctd-doublet-mode-droplets
+    name: RCTD doublet mode applied to droplet doublets
+    kind: hypothesis
+    layer: core
+    categories: [discarded-data, doublets]
+    side: additive
+    tier: hypothesis
+    summary: "Proposes decomposing droplet doublets with RCTD doublet mode, which fits the best one or two reference cell types per Slide-seq pixel, to assign both partners and their mixing proportion"
+    recovers: "partner identities and proportions for doublets that would otherwise be discarded"
+    requires: [filtered-matrix, reference]
+    caveats: "untested on droplet doublets; in RCTD's own simulations transcriptionally similar pairs were called singlets 87.0% of the time; models platform effects, not ambient RNA or interaction-induced expression"
+    url: https://github.com/dmcable/spacexr
+    repo: dmcable/spacexr
+    language: R
+    doi: "10.1038/s41587-021-00830-w"
+    pmid: "33603203"
+    cite_title: "Robust decomposition of cell type mixtures in spatial transcriptomics"
+    year: 2022
+    verified: true
+    track: T5
+    review: 05-discarded-data#rctd-doublet-mode-droplets
+    tags: [doublet-deconvolution, spatial-method-reuse]
+
+# --- Lost and damaged cells as a drug-response readout -----------------------------------------------
+
+  - id: cell-recovery-viability
+    name: Cell recovery per condition as a viability readout
+    kind: method
+    layer: core
+    categories: [discarded-data, screen-design]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Fits dose-response curves to the number of cells recovered per hashed condition to estimate drug toxicity alongside the transcriptome, as done in sci-Plex"
+    recovers: "a viability phenotype from cell counts that would otherwise only set DE power"
+    gain: "sci-Plex: viability scores from recovered counts concordant with gold-standard measurements; 52 of 188 compounds (27%) cut viability by 50% or more at the top dose; K562 bosutinib sensitivity confirmed by cell counting"
+    gain_source: self-reported
+    requires: [tag-counts, doses-or-time, multiple-conditions]
+    caveats: "counts reflect hashing efficiency, QC thresholds and loading as well as survival; relative shares need a stable reference (vehicle wells or spike-in cells); Tahoe-100M reports cytotoxicity phenotypes but the method was not checked here"
+    url: https://doi.org/10.1126/science.aax6234
+    doi: "10.1126/science.aax6234"
+    pmid: "31806696"
+    cite_title: "Massively multiplex chemical transcriptomics at single-cell resolution"
+    year: 2020
+    verified: true
+    papers: ["pmid:42753697", "pmid:35688146"]
+    track: T5
+    review: 05-discarded-data#cell-recovery-viability
+    tags: [drug-screen, viability, cell-counts, hashing]
+
+  - id: mito-filter-resistant-cells
+    name: Mitochondrial filtering removes viable, drug-resistant malignant cells
+    kind: evidence
+    layer: core
+    categories: [discarded-data, qc-metrics-thresholds, damaged-cells]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "Shows across 9 tumour scRNA-seq datasets (441,445 cells, 134 patients) that malignant cells have higher mitochondrial fractions without more dissociation stress, and links high mitochondrial fraction to drug resistance in cell lines and resistant clones"
+    recovers: "viable high-mitochondrial malignant cells, including resistant clones, that a fixed 10-20% filter removes"
+    gain: "in 10-50% of tumour samples the malignant compartment had twice the high-mito share of the microenvironment, without higher dissociation-stress scores; across CCLE lines higher mito fraction associated with higher IC50 (drug resistance), median mito 4% (glioblastoma) to 14% (head and neck)"
+    gain_source: independent
+    requires: [filtered-matrix]
+    caveats: "observational; drug link comes from bulk CCLE IC50 correlations and one ovarian line's lineage-traced clones, not single-cell drug screens; the 15% cut-off used to define high-mito is itself a convention"
+    url: https://doi.org/10.1186/s13059-025-03559-w
+    doi: "10.1186/s13059-025-03559-w"
+    pmid: "40205439"
+    cite_title: "Filtering cells with high mitochondrial content depletes viable metabolically altered malignant cell populations in cancer single-cell studies"
+    year: 2025
+    verified: true
+    track: T5
+    review: 05-discarded-data#mito-filter-resistant-cells
+    tags: [qc-bias, mitochondrial, drug-resistance, cancer, cell-lines, drug-screen]
+
+  - id: survivor-bias
+    name: Survivor bias in drug-response transcriptomes
+    kind: evidence
+    layer: core
+    categories: [discarded-data, damaged-cells]
+    side: additive
+    tier: published-unbenchmarked
+    summary: "MIX-Seq found that the BCL-2 inhibitor navitoclax and the MCL1 inhibitor AZD5591 gave strong selective viability effects but no robust transcriptional signature in captured cells, the exceptions to transcriptome-based viability prediction"
+    recovers: "an argument for reading drug effects from lost cells when surviving cells look unchanged"
+    requires: [genotypes, multiple-conditions]
+    caveats: "two compounds in one study; for other drugs a shared viability-related signature predicted long-term viability (single model R2 0.50 at 24 h); drug-induced drops in mRNA per cell (Smart-seq2 spike-in study) also bias which cells pass UMI floors"
+    url: https://doi.org/10.1038/s41467-020-17440-w
+    doi: "10.1038/s41467-020-17440-w"
+    pmid: "32855387"
+    cite_title: "Multiplexed single-cell transcriptional response profiling to define cancer vulnerabilities and therapeutic mechanism of action"
+    year: 2020
+    verified: true
+    papers: ["pmid:34159316"]
+    track: T5
+    review: 05-discarded-data#survivor-bias
+    tags: [drug-screen, selection-bias, apoptosis, viability]
+
+# --- Compositional readouts (adjacent layer) ----------------------------------------------------------
+
+  - id: sccoda
+    name: scCODA
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, discarded-data, low-cell-stats]
+    side: neutral
+    tier: standard
+    summary: "Bayesian hierarchical Dirichlet-multinomial model that tests cell-type composition changes relative to a reference cell type, with spike-and-slab selection controlling the false discovery rate"
+    recovers: "composition changes, including drug-driven depletion, from few samples"
+    gain: "own simulations: mean Matthews correlation 0.64, ahead of non-Bayesian methods at low replicate numbers (n = 2 per group scenarios)"
+    gain_source: self-reported
+    requires: [filtered-matrix, replicates]
+    caveats: "results depend on the reference type, which must be stable across conditions; measures relative not absolute change; named in a best-practice guide that also notes composition methods lack an independent benchmark"
+    url: https://github.com/theislab/scCODA
+    repo: theislab/scCODA
+    language: Python
+    doi: "10.1038/s41467-021-27150-6"
+    pmid: "34824236"
+    cite_title: "scCODA is a Bayesian model for compositional single-cell data analysis"
+    year: 2021
+    verified: true
+    papers: ["pmid:37002403"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "QC removal that differs by condition changes the counted proportions directly; a cytotoxic drug's cells can fail QC instead of disappearing, which shifts its composition"}
+      - {category: doublets, effect: "unremoved doublets form spurious mixed categories that absorb counts"}
+    track: T5
+    review: 05-discarded-data#sccoda
+    tags: [composition, differential-abundance, bayesian, pertpy]
+
+  - id: propeller
+    name: propeller (speckle) and Scanpro
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, discarded-data, low-cell-stats]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Tests cell-type proportion differences with logit or arcsine-square-root transformed proportions and limma empirical Bayes across biological replicates; Scanpro reimplements it in Python and adds bootstrapped pseudo-replicates for unreplicated designs"
+    recovers: "replicate-aware composition shifts per condition"
+    requires: [filtered-matrix, replicates]
+    caveats: "propeller needs biological replicates; Scanpro pseudo-replicates cannot reproduce biological variance, so unreplicated tests are likely anticonservative; relative shares only"
+    url: https://github.com/phipsonlab/speckle
+    repo: phipsonlab/speckle
+    language: R
+    doi: "10.1093/bioinformatics/btac582"
+    pmid: "36005887"
+    cite_title: "propeller: testing for differences in cell type proportions in single cell data"
+    year: 2022
+    verified: true
+    papers: ["pmid:38971877"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "per-sample QC loss changes the proportions tested; report retained fraction per sample alongside"}
+      - {category: screen-design, effect: "needs replicate wells per condition, which high-multiplex screens often trade away"}
+    track: T5
+    review: 05-discarded-data#propeller
+    tags: [composition, differential-abundance, limma, unreplicated]
+
+  - id: sccomp
+    name: sccomp
+    kind: tool
+    layer: adjacent
+    categories: [de-pseudobulk, discarded-data]
+    side: neutral
+    tier: published-unbenchmarked
+    summary: "Bayesian sum-constrained Beta-binomial model for differential composition and differential variability that models the proportion mean-variability association and identifies and excludes outlier observations"
+    recovers: "composition and variability changes robust to outlier samples"
+    requires: [filtered-matrix, replicates]
+    caveats: "self-reported improvement over existing methods; outlier exclusion could hide a genuine extreme response, such as a highly cytotoxic well"
+    url: https://github.com/MangiolaLaboratory/sccomp
+    repo: MangiolaLaboratory/sccomp
+    language: R
+    doi: "10.1073/pnas.2203828120"
+    pmid: "37549298"
+    cite_title: "sccomp: Robust differential composition and variability analysis for single-cell data"
+    year: 2023
+    verified: true
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "condition-dependent QC loss appears as composition change or as an outlier sample"}
+    track: T5
+    review: 05-discarded-data#sccomp
+    tags: [composition, differential-variability, outliers, bayesian]
+
+# --- Empty droplets and hashtag negatives ------------------------------------------------------------
+
+  - id: dsb
+    name: dsb
+    kind: tool
+    layer: core
+    categories: [discarded-data, ambient-rna]
+    side: both
+    tier: standard
+    summary: "Normalises and denoises antibody-derived tag counts using protein levels in empty droplets as the ambient background and a per-cell technical component from isotype controls and background proteins"
+    recovers: "cleaner protein signal, using empty droplets that are usually thrown away"
+    requires: [raw-matrix, protein]
+    caveats: "needs the raw matrix with empty droplets; empty-drop calls from RNA can include protein-rich cells such as neutrophils (DecontPro); included in the 14-method comparison of [[adtnorm]], which ADTnorm led (self-reported); titrating antibody concentrations cut background from a median 26.3% to 14.9% of UMIs [[buus-2021]], so some of what dsb removes can be prevented at the bench"
+    url: https://github.com/niaid/dsb
+    repo: niaid/dsb
+    language: R
+    doi: "10.1038/s41467-022-29356-8"
+    pmid: "35440536"
+    cite_title: "Normalizing and denoising protein expression data from droplet-based single cell profiling"
+    year: 2022
+    verified: true
+    papers: ["pmid:37002403", "pmid:40595741", "pmid:33861199"]
+    track: T5
+    review: 05-discarded-data#dsb
+    tags: [empty-droplets, citeseq, protein, ambient]
+
+  - id: decontpro
+    name: DecontPro
+    kind: tool
+    layer: core
+    categories: [discarded-data, ambient-rna]
+    side: both
+    tier: published-unbenchmarked
+    summary: "Bayesian hierarchical model that removes ambient and spongelet contamination from antibody-derived tag counts, after finding that some RNA-called empty droplets held high tag levels consistent with neutrophils"
+    recovers: "protein-defined cells hidden among RNA-called empty droplets, and cleaner protein signal"
+    requires: [raw-matrix, protein]
+    caveats: "self-reported superiority; spongelets (medium-tag empty droplets) are a newly described artefact; recommends calling empty drops separately for RNA and tags"
+    url: https://github.com/campbio/decontX
+    repo: campbio/decontX
+    language: R
+    doi: "10.1093/nar/gkad1032"
+    pmid: "37973397"
+    cite_title: "Characterization and decontamination of background noise in droplet-based single-cell protein expression data with DecontPro"
+    year: 2024
+    verified: true
+    track: T5
+    review: 05-discarded-data#decontpro
+    tags: [empty-droplets, citeseq, protein, ambient, low-rna-cells]
+
+  - id: spike-in-reference-cells
+    name: Spike-in reference cells
+    kind: design
+    layer: core
+    categories: [ambient-rna, screen-design, discarded-data]
+    side: both
+    tier: published-unbenchmarked
+    summary: "Adds standardised cross-species reference cells to every sample so that reads from the sample's genome inside reference cells measure that sample's contamination profile, which then drives decontamination of drug-treated islet cells"
+    recovers: "a per-sample ambient measurement and, in principle, an absolute denominator for cell counts"
+    requires: [filtered-matrix, reference]
+    caveats: "shown for decontamination in pancreatic islets (artemether, GABA, FoxO inhibitor, DMSO); use as an absolute cell-count reference in drug screens is untested"
+    url: https://doi.org/10.1186/s13059-020-02006-2
+    doi: "10.1186/s13059-020-02006-2"
+    pmid: "32375897"
+    cite_title: "Single-cell RNA-seq with spike-in cells enables accurate quantification of cell-specific drug effects in pancreatic islets"
+    year: 2020
+    verified: true
+    track: T5
+    review: 05-discarded-data#spike-in-reference-cells
+    tags: [spike-in, ambient, drug-screen, absolute-counts, design]
+
+# --- Frameworks that model cell loss --------------------------------------------------------------------
+
+  - id: unbalanced-ot-cell-loss
+    name: Unbalanced optimal transport to model drug-induced cell loss
+    kind: hypothesis
+    layer: adjacent
+    categories: [perturbation-models, discarded-data]
+    side: additive
+    tier: hypothesis
+    summary: "Proposes carrying the growth and death terms of unbalanced optimal transport, which Waddington-OT estimates from proliferation and apoptosis signatures, into control-to-treated drug-response maps so that cell loss is modelled instead of ignored"
+    recovers: "a response model in which killed cells count as part of the effect"
+    requires: [filtered-matrix, multiple-conditions]
+    caveats: "untested for drug screens; growth and death priors from signatures are weak in short exposures; balanced maps such as CellOT move all control mass onto the treated survivors"
+    url: https://github.com/broadinstitute/wot
+    repo: broadinstitute/wot
+    language: Python
+    doi: "10.1016/j.cell.2019.01.006"
+    pmid: "30712874"
+    cite_title: "Optimal-Transport Analysis of Single-Cell Gene Expression Identifies Developmental Trajectories in Reprogramming"
+    year: 2019
+    verified: true
+    papers: ["pmid:39843746", "pmid:37770709"]
+    qc_links:
+      - {category: qc-metrics-thresholds, effect: "QC removal is indistinguishable from death in the transported mass unless retained fractions are reported per condition"}
+      - {category: damaged-cells, effect: "damaged-cell calls could serve as an observed death term"}
+    track: T5
+    review: 05-discarded-data#unbalanced-ot-cell-loss
+    tags: [optimal-transport, cell-death, perturbation-model, drug-screen]
