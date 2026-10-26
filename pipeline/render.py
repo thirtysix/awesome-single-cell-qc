@@ -1716,8 +1716,7 @@ HUB_FONTS = """\
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   --measure: 66ch;
-  --rail: 236px;
-  --stick: 0px;
+  --stick: 52px;
 """
 
 HUB_CSS = r"""
@@ -1746,7 +1745,7 @@ a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset:
 a:hover { color: var(--accent-hover); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 [id], tr[data-id] { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + var(--stick) + 16px); }
-.frame { max-width: 1400px; margin-inline: auto; }
+.frame { max-width: none; }
 
 /* masthead */
 .masthead {
@@ -1754,8 +1753,7 @@ a:hover { color: var(--accent-hover); }
   grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
   grid-template-areas: "title title" "id legend";
   gap: 8px 48px;
-  padding-block: 28px 24px;
-  border-bottom: 1px solid var(--line);
+  padding-block: 20px 16px;
 }
 .masthead > * { min-width: 0; }
 .titlerow { grid-area: title; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -1797,30 +1795,47 @@ a:hover { color: var(--accent-hover); }
 .tier.t3 { background: var(--t3); color: var(--t3-fg); }
 .tier.t4 { background: var(--t4); color: var(--t4-fg); border-color: var(--t4-line); border-style: dashed; }
 
-/* rail */
-.layout { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); gap: 48px; padding-top: 28px; }
-.rail {
-  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start;
-  max-height: calc(100vh - 40px); overflow-y: auto; padding-bottom: 12px; font-size: 14px;
+/* top bar: the catalog, then a menu of the chapters */
+.layout { display: block; }
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
+  display: flex; align-items: center; gap: 6px; min-height: var(--stick);
+  margin-bottom: 24px; border-block: 1px solid var(--line); background: var(--bg); font-size: 14px;
 }
-.rail ol { list-style: none; margin: 0; padding: 0; }
-.rail .views > li + li { margin-top: 2px; }
-.rail .views > li.last { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
-.rail a.v {
-  display: grid; grid-template-columns: 1.9em minmax(0, 1fr) auto; gap: 6px; align-items: baseline;
+.topbar a.v, .chapters > summary {
+  display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: 4px;
+  color: var(--fg); text-decoration: none; cursor: pointer; white-space: nowrap; line-height: 1.3;
+}
+.topbar a.v:hover, .chapters > summary:hover { background: var(--surface); }
+.topbar a.v[aria-current="page"], .chapters.on > summary { background: var(--accent-soft); font-weight: 600; }
+.topbar .n { color: var(--muted); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.chapters { position: relative; min-width: 0; }
+.chapters > summary { list-style: none; }
+.chapters > summary::-webkit-details-marker { display: none; }
+.chapters > summary::after { content: "\25BE"; color: var(--muted); }
+.chapters .cur { overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-weight: 400; }
+.chapters .menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 35;
+  width: min(26rem, calc(100vw - 32px)); max-height: 70vh; overflow-y: auto;
+  margin: 0; padding: 6px; list-style: none;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--bg); box-shadow: 0 6px 24px var(--shadow);
+}
+.chapters .menu a {
+  display: grid; grid-template-columns: 1.9em minmax(0, 1fr); gap: 6px; align-items: baseline;
   padding: 6px 8px; border-radius: 4px; color: var(--fg); text-decoration: none; line-height: 1.3;
 }
-.rail a.v:hover { background: var(--surface); }
-.rail a.v[aria-current="page"] { background: var(--accent-soft); font-weight: 600; }
-.rail .num { color: var(--faint); font: 12px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
-.rail a.v[aria-current="page"] .num { color: var(--accent); }
-.rail .n { color: var(--muted); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.rail .toc { display: none; margin: 4px 0 8px calc(1.9em + 14px); padding-left: 10px; border-left: 1px solid var(--line); }
-.rail li.on > .toc { display: block; }
-.rail .toc a { display: block; padding: 3px 0; color: var(--muted); font-size: 13px; line-height: 1.35; text-decoration: none; }
-.rail .toc a:hover { color: var(--accent); }
-.rail .toc .h3 a { padding-left: 12px; font-size: 12.5px; }
-.ch-toc { display: none; }
+.chapters .menu a:hover { background: var(--surface); }
+.chapters .menu a[aria-current="page"] { background: var(--accent-soft); font-weight: 600; }
+.chapters .num { color: var(--faint); font: 12px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+.chapters .menu a[aria-current="page"] .num { color: var(--accent); }
+.ch-toc { display: block; margin: 0 0 28px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+.ch-toc p { margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.ch-toc ol { margin: 0; padding: 0; list-style: none; }
+.ch-toc li { padding: 2px 0; }
+.ch-toc .h3 { padding-left: 14px; }
+.ch-toc a { text-decoration: none; }
+/* chapters read as a centred column; the catalog takes the full width */
+.view:not(.catalog) { max-width: 64rem; margin-inline: auto; }
 
 /* a view: eyebrow, title, standfirst, then prose or the catalog */
 .view { min-width: 0; }
@@ -2011,28 +2026,8 @@ th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: t
   .legend { margin-top: 8px; }
   .legend { max-width: 46rem; }
 }
-@media (max-width: 960px) {
-  :root { --stick: 52px; }
-  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 0; }
-  .rail {
-    top: env(safe-area-inset-top, 0px); z-index: 30; max-height: none; overflow: visible;
-    margin-bottom: 24px; padding: 0; border-bottom: 1px solid var(--line); background: var(--bg);
-  }
-  .rail .views { display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; scrollbar-width: none; }
-  .rail .views > li + li { margin-top: 0; }
-  .rail .views > li.last { margin: 0; padding: 0; border: 0; }
-  .rail a.v { display: flex; gap: 6px; padding: 6px 10px; white-space: nowrap; }
-  .rail .toc { display: none !important; }
-  .ch-toc { display: block; margin: 0 0 28px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
-  .ch-toc p { margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-  .ch-toc ol { margin: 0; padding: 0; list-style: none; }
-  .ch-toc li { padding: 2px 0; }
-  .ch-toc .h3 { padding-left: 14px; }
-  .ch-toc a { text-decoration: none; }
-}
 @media (max-width: 600px) {
-  .rail a.v .lbl:not(.keep), .rail a.v .n { display: none; }
-  .rail a.v .num { color: var(--fg); font-size: 13px; }
+  .chapters .cur { display: none; }
   .hub { font-size: 24px; }
   .view-head h1 { font-size: 25px; }
   .prose { font-size: 16.5px; }
@@ -2163,6 +2158,12 @@ function showView(token) {
     a.parentElement.classList.toggle('on', on);
   });
   current = token;
+  const menu = document.querySelector('.chapters');
+  if (menu) {
+    menu.classList.toggle('on', token !== 'catalog');
+    menu.querySelector('.cur').textContent = token === 'catalog' ? '' : viewLabel(token);
+    menu.open = false;
+  }
   if (token === 'catalog' && statsOpen) renderStats(RECORDS.filter(matches));
   return true;
 }
@@ -2194,7 +2195,7 @@ function focusRecord(id) {
 }
 
 function go(token) {
-  if (!token || !TOKEN.test(token)) token = VIEWS[0][0];
+  if (!token || !TOKEN.test(token)) token = 'catalog';
   if (viewTitle.has(token)) {
     const changed = showView(token);
     scrollTo(0, changed ? (scrollAt[token] || 0) : 0);
@@ -2211,7 +2212,7 @@ function go(token) {
   }
   // a section that has since been renamed still opens its chapter
   const owner = VIEWS.find(([v]) => token.startsWith(v + '-'));
-  go(owner ? owner[0] : VIEWS[0][0]);
+  go(owner ? owner[0] : 'catalog');
 }
 
 document.addEventListener('click', e => {
@@ -2258,8 +2259,13 @@ document.querySelectorAll('.cmap-svg').forEach(svg => {
   });
 });
 
-// On a phone the tier legend starts folded; it is one tap away.
-if (matchMedia('(max-width: 700px)').matches) document.querySelector('.legend')?.removeAttribute('open');
+// The chapters menu closes on a choice, a click elsewhere or Escape.
+const chapterMenu = document.querySelector('.chapters');
+if (chapterMenu) {
+  chapterMenu.addEventListener('click', e => { if (e.target.closest('a')) chapterMenu.open = false; });
+  document.addEventListener('click', e => { if (!chapterMenu.contains(e.target)) chapterMenu.open = false; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') chapterMenu.open = false; });
+}
 
 render();
 go(location.hash.slice(1));
@@ -2287,7 +2293,7 @@ def _hub_masthead(catalog: dict, views: list[ReviewView]) -> str:
 <p class="meta"><span>{plural(len(records), "record")} ({layers})</span><span>{plural(chapters, "review chapter")}</span><span>built {_esc(catalog["meta"]["generated"])}</span></p>
 <p class="meta">Source, with the TSV and JSON catalog: <a href="{REPO_URL}">github.com/thirtysix/awesome-single-cell-qc</a></p>
 </div>
-<details class="legend" open>
+<details class="legend">
 <summary>How to read tiers</summary>
 <dl>
 {rows}
@@ -2298,21 +2304,21 @@ def _hub_masthead(catalog: dict, views: list[ReviewView]) -> str:
 
 
 def _hub_rail(views: list[ReviewView], n_records: int) -> str:
+    """The top bar: the catalog (the landing view), then a menu of the chapters."""
     items = []
     for v in views:
-        toc = "".join(f'<li class="h{level}"><a href="#{eid}">{_esc(text)}</a></li>'
-                      for level, text, eid in v.page.toc)
         overview = v.token == "overview"
         items.append(
-            f'<li><a class="v" href="#{v.token}" data-nav="{v.token}" title="{_attr(v.title)}">'
+            f'<li><a href="#{v.token}" data-nav="{v.token}" title="{_attr(v.title)}">'
             f'<span class="num">{"" if overview else v.number}</span>'
-            f'<span class="lbl{" keep" if overview else ""}">{_esc(v.short)}</span></a>'
-            + (f'<ol class="toc">{toc}</ol>' if toc else "") + "</li>")
-    items.append('<li class="last"><a class="v" href="#catalog" data-nav="catalog">'
-                 '<span class="num"></span><span class="lbl keep">Catalog</span>'
-                 f'<span class="n">{n_records}</span></a></li>')
-    return ('<nav class="rail" aria-label="Report">\n<ol class="views">\n'
-            + "\n".join(items) + "\n</ol>\n</nav>")
+            f'<span class="lbl">{_esc(v.short)}</span></a></li>')
+    menu = ""
+    if items:
+        menu = ('<details class="chapters"><summary>Chapters <span class="cur"></span></summary>\n'
+                '<ol class="menu">\n' + "\n".join(items) + "\n</ol>\n</details>\n")
+    return ('<nav class="topbar" aria-label="Report">\n'
+            '<a class="v" href="#catalog" data-nav="catalog">Catalog'
+            f'<span class="n">{n_records}</span></a>\n' + menu + "</nav>")
 
 
 def _hub_view(v: ReviewView, hidden: bool) -> str:
@@ -2348,7 +2354,7 @@ def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR) -> str:
     # data, chapter text and view index go in last, so a placeholder-like
     # string inside a record can never be substituted.
     catalog_part = _fill_catalog(
-        HUB_CATALOG.replace("__HIDDEN__", "" if not views else " hidden")
+        HUB_CATALOG.replace("__HIDDEN__", "")
         .replace("__REPO__", REPO_URL)
         + "<script>\n__CATALOG_JS__\n__HUB_JS__</script>",
         catalog, standalone=True)
@@ -2367,7 +2373,7 @@ def render_hub(catalog: dict, review_dir: Path = REVIEW_DIR) -> str:
         '<div class="layout">',
         _hub_rail(views, len(records)),
         '<main class="views-main" id="main">',
-        *[_hub_view(v, hidden=i > 0) for i, v in enumerate(views)],
+        *[_hub_view(v, hidden=True) for v in views],
         catalog_part[:script_at].rstrip("\n"),
         "</main>",
         "</div>",

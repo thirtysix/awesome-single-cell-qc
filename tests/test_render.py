@@ -274,8 +274,10 @@ def test_hub_links_are_plain_tokens_https_and_quoted(hub):
 
 def test_hub_shows_one_view_at_a_time(hub):
     assert re.findall(r'data-view="([^"]+)"', hub) == ["ch01", "catalog"]
-    assert re.search(r'<section class="view" data-view="ch01"[^>]*>', hub).group(0).count("hidden") == 0
-    assert re.search(r'<section class="view catalog" data-view="catalog"[^>]*>', hub).group(0).endswith(" hidden>")
+    # the catalog is the landing view; every chapter starts hidden
+    assert re.search(r'<section class="view" data-view="ch01"[^>]*>', hub).group(0).endswith(" hidden>")
+    assert "hidden" not in re.search(r'<section class="view catalog" data-view="catalog"[^>]*>', hub).group(0)
+    assert hub.index('data-nav="catalog"') < hub.index('data-nav="ch01"')
     assert 'href="#ch01" data-nav="ch01"' in hub and 'href="#catalog" data-nav="catalog"' in hub
 
 
