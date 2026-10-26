@@ -1,10 +1,20 @@
 # Awesome Single-Cell QC
 
+[![Records](https://img.shields.io/badge/records-291-blue)](https://thirtysix.github.io/awesome-single-cell-qc/) [![Site](https://img.shields.io/badge/browse-interactive%20catalog-teal)](https://thirtysix.github.io/awesome-single-cell-qc/) [![Data: CC BY 4.0](https://img.shields.io/badge/data-CC--BY--4.0-lightgrey)](LICENSE-DATA) [![Code: MIT](https://img.shields.io/badge/code-MIT-lightgrey)](LICENSE)
+
+### **[Open the interactive catalog and review →](https://thirtysix.github.io/awesome-single-cell-qc/)**
+
+Search, filter and sort every record, open any one for its evidence and citation, hover a column header or chip for what it means, and read the review chapters, all on one page.
+
+<a href="https://thirtysix.github.io/awesome-single-cell-qc/"><img src="docs/screenshots/catalog.webp" alt="The catalog: category chips, summary panels and the record table" width="100%"></a>
+
+<a href="https://thirtysix.github.io/awesome-single-cell-qc/#demuxmix"><img src="docs/screenshots/record.webp" alt="A record opened for its details, with a column-header tooltip" width="49%"></a> <a href="https://thirtysix.github.io/awesome-single-cell-qc/#ch01"><img src="docs/screenshots/chapter.webp" alt="A review chapter, opened from the Chapters menu" width="49%"></a>
+
 A comprehensive catalog of single-cell QC and preprocessing tools, methods and evidence, with an emphasis on **salvaging cells and signal in multiplexed experiments**, plus a map of the adjacent concepts that QC choices feed into.
 
 **291 records** (235 core, 56 adjacent) and 58 benchmark studies, built 2026-10-26. Every entry carries a tier, the side it works on (keeping cells, removing them, or either), what it needs as input, and, where it recovers cells or signal, the reported gain and who measured it.
 
-**Browse it at https://thirtysix.github.io/awesome-single-cell-qc/**: the full catalog, with filters for layer, category, kind, tier, side and required input, and the review chapters. The same page is `docs/index.html` (`make serve`, then http://127.0.0.1:8510/). On GitHub, [docs/records.md](docs/records.md) lists every record.
+The site at https://thirtysix.github.io/awesome-single-cell-qc/ is `docs/index.html` (`make serve`, then http://127.0.0.1:8510/, to run it locally). On GitHub, [docs/records.md](docs/records.md) lists every record.
 
 ## Contents
 

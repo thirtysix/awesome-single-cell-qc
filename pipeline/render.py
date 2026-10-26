@@ -193,6 +193,26 @@ def render_readme(catalog: dict) -> str:
     A = out.append
     A(f"# {TITLE}")
     A("")
+    if total:
+        A(f"[![Records](https://img.shields.io/badge/records-{total}-blue)]({SITE_URL}) "
+          f"[![Site](https://img.shields.io/badge/browse-interactive%20catalog-teal)]({SITE_URL}) "
+          "[![Data: CC BY 4.0](https://img.shields.io/badge/data-CC--BY--4.0-lightgrey)](LICENSE-DATA) "
+          "[![Code: MIT](https://img.shields.io/badge/code-MIT-lightgrey)](LICENSE)")
+        A("")
+        A(f"### **[Open the interactive catalog and review →]({SITE_URL})**")
+        A("")
+        A("Search, filter and sort every record, open any one for its evidence and "
+          "citation, hover a column header or chip for what it means, and read the "
+          "review chapters, all on one page.")
+        A("")
+        A(f'<a href="{SITE_URL}"><img src="docs/screenshots/catalog.webp" '
+          'alt="The catalog: category chips, summary panels and the record table" width="100%"></a>')
+        A("")
+        A(f'<a href="{SITE_URL}#demuxmix"><img src="docs/screenshots/record.webp" '
+          'alt="A record opened for its details, with a column-header tooltip" width="49%"></a> '
+          f'<a href="{SITE_URL}#ch01"><img src="docs/screenshots/chapter.webp" '
+          'alt="A review chapter, opened from the Chapters menu" width="49%"></a>')
+        A("")
     A("A comprehensive catalog of single-cell QC and preprocessing tools, methods and "
       "evidence, with an emphasis on **salvaging cells and signal in multiplexed "
       "experiments**, plus a map of the adjacent concepts that QC choices feed into.")
@@ -210,11 +230,9 @@ def render_readme(catalog: dict) -> str:
           "still writing `curation/records/`; this page fills in on the next "
           "`make curate`.")
     A("")
-    A(f"**Browse it at {SITE_URL}**: the full catalog, with filters for layer, "
-      "category, kind, tier, side and required input, and the review chapters. "
-      "The same page is `docs/index.html` (`make serve`, then "
-      "http://127.0.0.1:8510/). On GitHub, [docs/records.md](docs/records.md) lists "
-      "every record.")
+    A(f"The site at {SITE_URL} is `docs/index.html` (`make serve`, then "
+      "http://127.0.0.1:8510/, to run it locally). On GitHub, "
+      "[docs/records.md](docs/records.md) lists every record.")
     A("")
 
     A("## Contents")

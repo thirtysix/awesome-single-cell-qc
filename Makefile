@@ -24,7 +24,7 @@ endif
 INPUTS := --records $(RECORDS) --benchmarks $(BENCHMARKS)
 
 .PHONY: all test build build-strict render curate verify enrich check page serve \
-        scview-import scview-proposal clean
+        scview-import scview-proposal screenshots clean
 
 ## refresh the caches (network), then rebuild and check
 all: verify enrich curate check
@@ -69,6 +69,10 @@ page:
 ## preview the site at http://127.0.0.1:$(PORT)/ (loopback only)
 serve:
 	$(PY) -m http.server $(PORT) --bind 127.0.0.1 --directory docs
+
+## docs/screenshots/*.webp for the README, from docs/index.html (needs playwright + chromium, Pillow)
+screenshots:
+	$(PIPELINE)/screenshots.py
 
 # Maintainer tooling: needs a local scView checkout's research files and the
 # untracked exchange/scview-map.yaml, neither of which is in a repository.
