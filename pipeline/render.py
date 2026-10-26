@@ -1715,7 +1715,7 @@ HUB_FONTS = """\
   --font-text: Charter, "Bitstream Charter", "Sitka Text", Cambria, "Noto Serif", "DejaVu Serif", Georgia, serif;
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-  --measure: 66ch;
+  --measure: 96ch;
   --stick: 52px;
 """
 
@@ -1835,11 +1835,11 @@ a:hover { color: var(--accent-hover); }
 .ch-toc .h3 { padding-left: 14px; }
 .ch-toc a { text-decoration: none; }
 /* chapters read as a centred column; the catalog takes the full width */
-.view:not(.catalog) { max-width: 64rem; margin-inline: auto; }
+.view:not(.catalog) { max-width: 68rem; margin-inline: auto; }
 
 /* a view: eyebrow, title, standfirst, then prose or the catalog */
 .view { min-width: 0; }
-.view-head { max-width: 46rem; margin: 0 0 28px; }
+.view-head { max-width: 60rem; margin: 0 0 28px; }
 .eyebrow {
   margin: 0 0 10px; color: var(--accent);
   font: 600 12px/1 var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase;
